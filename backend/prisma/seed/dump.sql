@@ -1942,3 +1942,721 @@ VALUES
   (115, 'options', 'text', '', false, '', 'Start options', 2),
   (115, 'service', 'text', '', false, 'api, web', 'Optional service name', 3);
 
+-- ============================================
+-- GIT VERSION CONTROL
+-- ============================================
+
+-- git-init (116)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-init',
+  'Create a new Git repository',
+  'git init {{options}} {{directory}}',
+  'Git',
+  ARRAY['init', 'setup', 'repository', 'git'],
+  'git init',
+  'Initializes a new .git directory. Use --bare for a bare repo, or pass a path to create elsewhere.'
+);
+
+-- git-clone (117)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-clone',
+  'Clone a remote repository',
+  'git clone {{options}} {{repository}} {{directory}}',
+  'Git',
+  ARRAY['clone', 'remote', 'download', 'git'],
+  'git clone git@github.com:org/repo.git',
+  'Copies a remote repo locally. Use --depth 1 for a shallow clone, -b to pick a branch.'
+);
+
+-- git-status (118)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-status',
+  'Show working tree status',
+  'git status {{options}}',
+  'Git',
+  ARRAY['status', 'working-tree', 'git'],
+  'git status -sb',
+  'Shows staged, unstaged, and untracked files. -sb is a short branch summary.'
+);
+
+-- git-add (119)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-add',
+  'Stage files for commit',
+  'git add {{options}} {{pathspec}}',
+  'Git',
+  ARRAY['add', 'stage', 'index', 'git'],
+  'git add .',
+  'Adds file contents to the index. Use -p to stage hunks interactively, -u for tracked files only.'
+);
+
+-- git-commit (120)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-commit',
+  'Record staged changes to the repository',
+  'git commit {{options}} -m "{{message}}"',
+  'Git',
+  ARRAY['commit', 'save', 'history', 'git'],
+  'git commit -m "Fix login validation"',
+  'Creates a new commit from staged changes. Use --amend carefully to rewrite the last commit.'
+);
+
+-- git-push (121)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-push',
+  'Upload local commits to a remote',
+  'git push {{options}} {{remote}} {{branch}}',
+  'Git',
+  ARRAY['push', 'remote', 'publish', 'git'],
+  'git push -u origin main',
+  'Sends commits to the remote. -u sets upstream tracking. Avoid --force on shared branches.'
+);
+
+-- git-pull (122)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-pull',
+  'Fetch and integrate remote changes',
+  'git pull {{options}} {{remote}} {{branch}}',
+  'Git',
+  ARRAY['pull', 'remote', 'sync', 'git'],
+  'git pull --rebase origin main',
+  'Fetches then merges (or rebases with --rebase) remote commits into the current branch.'
+);
+
+-- git-fetch (123)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-fetch',
+  'Download remote refs without merging',
+  'git fetch {{options}} {{remote}}',
+  'Git',
+  ARRAY['fetch', 'remote', 'sync', 'git'],
+  'git fetch --all --prune',
+  'Updates remote-tracking branches only. Safer than pull when you want to inspect first.'
+);
+
+-- git-branch-list (124)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-branch-list',
+  'List local or remote branches',
+  'git branch {{options}}',
+  'Git',
+  ARRAY['branch', 'list', 'git'],
+  'git branch -vv',
+  'Lists branches. -a shows remotes, -vv shows tracking and last commit.'
+);
+
+-- git-branch-create (125)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-branch-create',
+  'Create a new branch',
+  'git branch {{options}} {{branch_name}}',
+  'Git',
+  ARRAY['branch', 'create', 'git'],
+  'git branch feature/login',
+  'Creates a branch pointer without switching. Prefer git switch -c to create and check out.'
+);
+
+-- git-branch-delete (126)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-branch-delete',
+  'Delete a local branch',
+  'git branch {{options}} {{branch_name}}',
+  'Git',
+  ARRAY['branch', 'delete', 'cleanup', 'git'],
+  'git branch -d feature/login',
+  'Use -d for safe delete (merged only), -D to force delete unmerged branches.'
+);
+
+-- git-checkout (127)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-checkout',
+  'Switch branches or restore files',
+  'git checkout {{options}} {{target}}',
+  'Git',
+  ARRAY['checkout', 'switch', 'branch', 'git'],
+  'git checkout -b feature/login',
+  'Legacy switch/restore command. Prefer git switch and git restore for clarity.'
+);
+
+-- git-switch (128)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-switch',
+  'Switch to another branch',
+  'git switch {{options}} {{branch_name}}',
+  'Git',
+  ARRAY['switch', 'branch', 'checkout', 'git'],
+  'git switch -c feature/login',
+  'Modern branch switching. -c creates and switches; - for previous branch.'
+);
+
+-- git-restore (129)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-restore',
+  'Restore working tree or staged files',
+  'git restore {{options}} {{pathspec}}',
+  'Git',
+  ARRAY['restore', 'discard', 'unstage', 'git'],
+  'git restore --staged file.js',
+  'Discards working changes or unstages with --staged. Safer replacement for checkout --.'
+);
+
+-- git-merge (130)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-merge',
+  'Merge another branch into the current branch',
+  'git merge {{options}} {{branch_name}}',
+  'Git',
+  ARRAY['merge', 'integrate', 'branch', 'git'],
+  'git merge feature/login',
+  'Combines histories. Use --no-ff to always create a merge commit, --abort to cancel.'
+);
+
+-- git-rebase (131)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-rebase',
+  'Reapply commits on top of another base',
+  'git rebase {{options}} {{upstream}}',
+  'Git',
+  ARRAY['rebase', 'history', 'rewrite', 'git'],
+  'git rebase main',
+  'Replays commits onto upstream. Use -i for interactive rebase. Avoid on shared published history.'
+);
+
+-- git-log (132)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-log',
+  'Show commit history',
+  'git log {{options}}',
+  'Git',
+  ARRAY['log', 'history', 'commits', 'git'],
+  'git log --oneline --graph --decorate -n 20',
+  'Browse history. Common flags: --oneline, --graph, -p, --author, --since.'
+);
+
+-- git-diff (133)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-diff',
+  'Show changes between commits, index, and working tree',
+  'git diff {{options}} {{revision}}',
+  'Git',
+  ARRAY['diff', 'changes', 'compare', 'git'],
+  'git diff --staged',
+  'Unstaged by default. --staged shows index vs HEAD; pass two refs to compare commits.'
+);
+
+-- git-show (134)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-show',
+  'Show a commit, tag, or object',
+  'git show {{options}} {{object}}',
+  'Git',
+  ARRAY['show', 'commit', 'inspect', 'git'],
+  'git show HEAD',
+  'Displays metadata and diff for a commit or tag. Useful after log to inspect a SHA.'
+);
+
+-- git-stash (135)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-stash',
+  'Stash local modifications temporarily',
+  'git stash {{options}}',
+  'Git',
+  ARRAY['stash', 'wip', 'temporary', 'git'],
+  'git stash push -m "wip: form validation"',
+  'Saves dirty work and cleans the tree. Use push -u to include untracked files.'
+);
+
+-- git-stash-list (136)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-stash-list',
+  'List saved stashes',
+  'git stash list {{options}}',
+  'Git',
+  ARRAY['stash', 'list', 'git'],
+  'git stash list',
+  'Shows stash@{n} entries. Use git stash show -p stash@{0} to inspect.'
+);
+
+-- git-stash-pop (137)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-stash-pop',
+  'Apply and remove a stash',
+  'git stash pop {{options}} {{stash}}',
+  'Git',
+  ARRAY['stash', 'pop', 'apply', 'git'],
+  'git stash pop',
+  'Applies the latest stash and drops it. Use apply to keep the stash entry.'
+);
+
+-- git-remote-add (138)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-remote-add',
+  'Add a remote repository',
+  'git remote add {{name}} {{url}}',
+  'Git',
+  ARRAY['remote', 'add', 'origin', 'git'],
+  'git remote add origin git@github.com:org/repo.git',
+  'Registers a remote URL under a short name, usually origin.'
+);
+
+-- git-remote-v (139)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-remote-v',
+  'List remotes with fetch and push URLs',
+  'git remote -v',
+  'Git',
+  ARRAY['remote', 'list', 'url', 'git'],
+  'git remote -v',
+  'Shows configured remotes. Use git remote set-url to change a URL.'
+);
+
+-- git-reset-soft (140)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-reset-soft',
+  'Move HEAD but keep index and working tree',
+  'git reset --soft {{commit}}',
+  'Git',
+  ARRAY['reset', 'soft', 'undo', 'git'],
+  'git reset --soft HEAD~1',
+  'Undo commit(s) while keeping all changes staged. Safe way to rewrite the last commit message/content.'
+);
+
+-- git-reset-mixed (141)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-reset-mixed',
+  'Move HEAD and unstage, keep working tree',
+  'git reset {{options}} {{commit}}',
+  'Git',
+  ARRAY['reset', 'mixed', 'unstage', 'undo', 'git'],
+  'git reset HEAD~1',
+  'Default reset mode. Undoes commits and unstages files but keeps file contents.'
+);
+
+-- git-reset-hard (142)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-reset-hard',
+  'Reset HEAD, index, and working tree (destructive)',
+  'git reset --hard {{commit}}',
+  'Git',
+  ARRAY['reset', 'hard', 'discard', 'destructive', 'git'],
+  'git reset --hard HEAD',
+  'Discards all uncommitted changes. Destructive and usually irreversible—use with care.'
+);
+
+-- git-revert (143)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-revert',
+  'Create a new commit that undoes a previous commit',
+  'git revert {{options}} {{commit}}',
+  'Git',
+  ARRAY['revert', 'undo', 'safe', 'git'],
+  'git revert HEAD',
+  'Safe undo for published history. Adds a reverse commit instead of rewriting history.'
+);
+
+-- git-cherry-pick (144)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-cherry-pick',
+  'Apply a commit from another branch',
+  'git cherry-pick {{options}} {{commit}}',
+  'Git',
+  ARRAY['cherry-pick', 'commit', 'patch', 'git'],
+  'git cherry-pick abc1234',
+  'Copies a specific commit onto the current branch. Use -x to record the source SHA.'
+);
+
+-- git-tag (145)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-tag',
+  'Create, list, or delete tags',
+  'git tag {{options}} {{tag_name}} {{commit}}',
+  'Git',
+  ARRAY['tag', 'release', 'version', 'git'],
+  'git tag -a v1.0.0 -m "Release 1.0.0"',
+  'Annotated tags (-a) are preferred for releases. Push with git push origin --tags.'
+);
+
+-- git-blame (146)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-blame',
+  'Show who last modified each line of a file',
+  'git blame {{options}} {{file}}',
+  'Git',
+  ARRAY['blame', 'author', 'history', 'git'],
+  'git blame src/app.js',
+  'Line-by-line authorship. Use -L to limit line range.'
+);
+
+-- git-config-user (147)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-config-user',
+  'Set Git user name and email',
+  'git config {{scope}} user.name "{{name}}" && git config {{scope}} user.email "{{email}}"',
+  'Git',
+  ARRAY['config', 'user', 'identity', 'git'],
+  'git config --global user.name "Ada Lovelace" && git config --global user.email "ada@example.com"',
+  'Sets commit identity. Use --global for all repos or omit for local repo only.'
+);
+
+-- git-clean (148)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-clean',
+  'Remove untracked files from the working tree',
+  'git clean {{options}}',
+  'Git',
+  ARRAY['clean', 'untracked', 'cleanup', 'destructive', 'git'],
+  'git clean -fd',
+  'Deletes untracked files/dirs. Always preview with -n first. -x also removes ignored files.'
+);
+
+-- git-reflog (149)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-reflog',
+  'Show history of HEAD movements',
+  'git reflog {{options}}',
+  'Git',
+  ARRAY['reflog', 'recovery', 'history', 'git'],
+  'git reflog -n 20',
+  'Lifesaver after bad resets. Recover lost commits with git reset --hard HEAD@{n}.'
+);
+
+-- git-bisect (150)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-bisect',
+  'Binary search to find a bad commit',
+  'git bisect {{subcommand}} {{revision}}',
+  'Git',
+  ARRAY['bisect', 'debug', 'regression', 'git'],
+  'git bisect start && git bisect bad && git bisect good v1.0.0',
+  'Marks good/bad commits to locate the first regression. End with git bisect reset.'
+);
+
+-- git-squash-last (151)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-squash-last',
+  'Soft-reset and recommit to squash recent commits',
+  'git reset --soft HEAD~{{count}} && git commit -m "{{message}}"',
+  'Git',
+  ARRAY['squash', 'rebase', 'cleanup', 'git'],
+  'git reset --soft HEAD~3 && git commit -m "Add auth flow"',
+  'Combines the last N commits into one while keeping all changes staged.'
+);
+
+-- git-push-upstream (152)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-push-upstream',
+  'Push current branch and set upstream tracking',
+  'git push -u {{remote}} HEAD',
+  'Git',
+  ARRAY['push', 'upstream', 'tracking', 'git'],
+  'git push -u origin HEAD',
+  'Pushes the current branch name to remote and sets tracking so later pushes can be git push.'
+);
+
+-- git-pull-rebase (153)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-pull-rebase',
+  'Pull with rebase instead of merge',
+  'git pull --rebase {{options}} {{remote}} {{branch}}',
+  'Git',
+  ARRAY['pull', 'rebase', 'sync', 'git'],
+  'git pull --rebase origin main',
+  'Replays local commits on top of remote. Keeps a linear history.'
+);
+
+-- git-diff-branches (154)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-diff-branches',
+  'Compare two branches',
+  'git diff {{base}}...{{compare}}',
+  'Git',
+  ARRAY['diff', 'branch', 'compare', 'git'],
+  'git diff main...feature/login',
+  'Triple-dot shows changes introduced on compare since it diverged from base.'
+);
+
+-- git-commit-amend (155)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'git-commit-amend',
+  'Amend the previous commit',
+  'git commit --amend {{options}} -m "{{message}}"',
+  'Git',
+  ARRAY['commit', 'amend', 'rewrite', 'git'],
+  'git commit --amend -m "Fix typo in login validation"',
+  'Rewrites the last commit. Do not amend commits already pushed to a shared branch.'
+);
+
+-- ============================================
+-- GIT COMMAND PROPERTIES
+-- ============================================
+
+-- git-init (116)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (116, 'options', 'text', '', false, '--bare, --initial-branch=main', 'Init options', 1),
+  (116, 'directory', 'text', '', false, '., ./my-project', 'Optional target directory', 2);
+
+-- git-clone (117)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (117, 'options', 'text', '', false, '--depth 1, -b main, --recurse-submodules', 'Clone options', 1),
+  (117, 'repository', 'text', '', true, 'git@github.com:org/repo.git', 'Remote repository URL', 2),
+  (117, 'directory', 'text', '', false, 'repo, ./apps/repo', 'Optional local directory name', 3);
+
+-- git-status (118)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (118, 'options', 'text', '-sb', false, '-sb, --ignored, --porcelain', 'Status options', 1);
+
+-- git-add (119)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (119, 'options', 'text', '', false, '-p, -u, -A, -n', 'Add options', 1),
+  (119, 'pathspec', 'text', '.', true, '., src/, file.js', 'Files or paths to stage', 2);
+
+-- git-commit (120)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (120, 'options', 'text', '', false, '--no-verify, -a, --signoff', 'Commit options', 1),
+  (120, 'message', 'text', '', true, 'Fix bug, Add feature', 'Commit message', 2);
+
+-- git-push (121)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (121, 'options', 'text', '', false, '-u, --tags, --force-with-lease', 'Push options', 1),
+  (121, 'remote', 'text', 'origin', true, 'origin, upstream', 'Remote name', 2),
+  (121, 'branch', 'text', 'HEAD', true, 'main, feature/login, HEAD', 'Branch to push', 3);
+
+-- git-pull (122)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (122, 'options', 'text', '', false, '--rebase, --ff-only, --no-edit', 'Pull options', 1),
+  (122, 'remote', 'text', 'origin', false, 'origin, upstream', 'Remote name', 2),
+  (122, 'branch', 'text', '', false, 'main, develop', 'Remote branch', 3);
+
+-- git-fetch (123)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (123, 'options', 'text', '--all --prune', false, '--all, --prune, --tags', 'Fetch options', 1),
+  (123, 'remote', 'text', '', false, 'origin, upstream', 'Optional remote (blank = default)', 2);
+
+-- git-branch-list (124)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (124, 'options', 'text', '-vv', false, '-a, -r, -vv, --merged', 'Branch list options', 1);
+
+-- git-branch-create (125)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (125, 'options', 'text', '', false, '', 'Branch options', 1),
+  (125, 'branch_name', 'text', '', true, 'feature/login, bugfix/123', 'New branch name', 2);
+
+-- git-branch-delete (126)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (126, 'options', 'text', '-d', true, '-d, -D, -r --delete', 'Delete options (-d safe, -D force)', 1),
+  (126, 'branch_name', 'text', '', true, 'feature/login', 'Branch to delete', 2);
+
+-- git-checkout (127)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (127, 'options', 'text', '', false, '-b, -', 'Checkout options', 1),
+  (127, 'target', 'text', '', true, 'main, feature/login, -- file.js', 'Branch, commit, or path', 2);
+
+-- git-switch (128)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (128, 'options', 'text', '', false, '-c, -', 'Switch options (-c to create)', 1),
+  (128, 'branch_name', 'text', '', true, 'main, feature/login', 'Branch to switch to', 2);
+
+-- git-restore (129)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (129, 'options', 'text', '', false, '--staged, --source=HEAD~1', 'Restore options', 1),
+  (129, 'pathspec', 'text', '', true, 'file.js, src/, .', 'Files to restore', 2);
+
+-- git-merge (130)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (130, 'options', 'text', '', false, '--no-ff, --squash, --abort', 'Merge options', 1),
+  (130, 'branch_name', 'text', '', true, 'feature/login, main', 'Branch to merge in', 2);
+
+-- git-rebase (131)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (131, 'options', 'text', '', false, '-i, --continue, --abort, --onto', 'Rebase options', 1),
+  (131, 'upstream', 'text', 'main', true, 'main, origin/main', 'Upstream base branch', 2);
+
+-- git-log (132)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (132, 'options', 'text', '--oneline --graph --decorate -n 20', false, '--oneline, -p, --author=name', 'Log options', 1);
+
+-- git-diff (133)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (133, 'options', 'text', '', false, '--staged, --stat, --name-only', 'Diff options', 1),
+  (133, 'revision', 'text', '', false, 'HEAD~1, main...feature', 'Optional revision or range', 2);
+
+-- git-show (134)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (134, 'options', 'text', '', false, '--stat, --name-only, -s', 'Show options', 1),
+  (134, 'object', 'text', 'HEAD', true, 'HEAD, abc1234, v1.0.0', 'Commit, tag, or object', 2);
+
+-- git-stash (135)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (135, 'options', 'text', 'push -m "wip"', false, 'push -u -m "msg", -k, -p', 'Stash options', 1);
+
+-- git-stash-list (136)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (136, 'options', 'text', '', false, '--date=local', 'List options', 1);
+
+-- git-stash-pop (137)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (137, 'options', 'text', '', false, '--index', 'Pop options', 1),
+  (137, 'stash', 'text', '', false, 'stash@{0}, stash@{1}', 'Optional stash ref (default latest)', 2);
+
+-- git-remote-add (138)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (138, 'name', 'text', 'origin', true, 'origin, upstream', 'Remote name', 1),
+  (138, 'url', 'text', '', true, 'git@github.com:org/repo.git', 'Remote URL', 2);
+
+-- git-reset-soft (140)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (140, 'commit', 'text', 'HEAD~1', true, 'HEAD~1, abc1234', 'Target commit (changes stay staged)', 1);
+
+-- git-reset-mixed (141)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (141, 'options', 'text', '', false, '--mixed', 'Reset options (default is mixed)', 1),
+  (141, 'commit', 'text', 'HEAD~1', true, 'HEAD~1, abc1234', 'Target commit (changes stay unstaged)', 2);
+
+-- git-reset-hard (142)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (142, 'commit', 'text', 'HEAD', true, 'HEAD, origin/main, abc1234', 'Target commit (discards local changes)', 1);
+
+-- git-revert (143)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (143, 'options', 'text', '', false, '--no-edit, -n, --continue', 'Revert options', 1),
+  (143, 'commit', 'text', 'HEAD', true, 'HEAD, abc1234', 'Commit to revert', 2);
+
+-- git-cherry-pick (144)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (144, 'options', 'text', '', false, '-x, -n, --continue, --abort', 'Cherry-pick options', 1),
+  (144, 'commit', 'text', '', true, 'abc1234, main~2', 'Commit SHA or ref to apply', 2);
+
+-- git-tag (145)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (145, 'options', 'text', '-a -m "Release"', false, '-a -m "msg", -d, -l', 'Tag options', 1),
+  (145, 'tag_name', 'text', '', false, 'v1.0.0, release-2024', 'Tag name (omit to list)', 2),
+  (145, 'commit', 'text', '', false, 'HEAD, abc1234', 'Optional commit to tag', 3);
+
+-- git-blame (146)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (146, 'options', 'text', '', false, '-L 10,40, -w, --since=2024-01-01', 'Blame options', 1),
+  (146, 'file', 'text', '', true, 'src/app.js, README.md', 'File to blame', 2);
+
+-- git-config-user (147)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (147, 'scope', 'text', '--global', true, '--global, --local, --system', 'Config scope', 1),
+  (147, 'name', 'text', '', true, 'Ada Lovelace', 'User name for commits', 2),
+  (147, 'email', 'text', '', true, 'ada@example.com', 'User email for commits', 3);
+
+-- git-clean (148)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (148, 'options', 'text', '-fdn', true, '-n (dry-run), -fd, -fdx', 'Clean options (preview with -n first)', 1);
+
+-- git-reflog (149)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (149, 'options', 'text', '-n 20', false, '-n 20, --date=iso', 'Reflog options', 1);
+
+-- git-bisect (150)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (150, 'subcommand', 'text', 'start', true, 'start, bad, good, reset, log', 'Bisect subcommand', 1),
+  (150, 'revision', 'text', '', false, 'v1.0.0, abc1234', 'Optional revision for good/bad', 2);
+
+-- git-squash-last (151)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (151, 'count', 'number', '2', true, '2, 3, 5', 'Number of recent commits to squash', 1),
+  (151, 'message', 'text', '', true, 'Add auth flow', 'New squashed commit message', 2);
+
+-- git-push-upstream (152)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (152, 'remote', 'text', 'origin', true, 'origin, upstream', 'Remote name', 1);
+
+-- git-pull-rebase (153)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (153, 'options', 'text', '', false, '--autostash, --ff-only', 'Pull-rebase options', 1),
+  (153, 'remote', 'text', 'origin', false, 'origin, upstream', 'Remote name', 2),
+  (153, 'branch', 'text', '', false, 'main, develop', 'Remote branch', 3);
+
+-- git-diff-branches (154)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (154, 'base', 'text', 'main', true, 'main, develop', 'Base branch', 1),
+  (154, 'compare', 'text', '', true, 'feature/login, HEAD', 'Branch to compare', 2);
+
+-- git-commit-amend (155)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (155, 'options', 'text', '', false, '--no-edit, --no-verify', 'Amend options (--no-edit keeps message)', 1),
+  (155, 'message', 'text', '', true, 'Fix typo in login validation', 'New commit message', 2);
+
