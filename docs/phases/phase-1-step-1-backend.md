@@ -23,7 +23,7 @@ backend/
   prisma/schema.prisma
   prisma/migrations/
   prisma/seed/dump.sql
-  scripts/ (db-seed, db-dump, db-url)
+  scripts/db-seed.js
   models/Command.js
   models/Property.js
   controllers/commandController.js

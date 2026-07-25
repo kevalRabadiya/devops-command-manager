@@ -77,16 +77,14 @@ On Vercel, set the same `DATABASE_URL` (and `CORS_ORIGIN=*`) as environment vari
 cd backend
 
 npm run db:migrate   # Prisma migrations (DDL)
-npm run db:seed      # Import prisma/seed/dump.sql via psql + DATABASE_URL
-npm run db:dump      # Export current data back into dump.sql
+npm run db:seed      # Import prisma/seed/dump.sql into DATABASE_URL
 ```
 
-To wipe the app schema and recreate:
+To wipe the app schema and recreate (Neon SQL editor or local `psql`):
 
 ```bash
+# DROP SCHEMA IF EXISTS devops_cli CASCADE;
 cd backend
-# Uses cleaned DATABASE_URL (strips Prisma schema=; adds Neon SSL if needed)
-psql "$(node scripts/db-url.js)" -c 'DROP SCHEMA IF EXISTS devops_cli CASCADE;'
 npm run db:migrate
 npm run db:seed
 ```
@@ -117,10 +115,9 @@ Env file: `backend/.env` (copy from `.env.example`).
 |--------|---------|
 | `npm run db:migrate` | Apply Prisma migrations (`prisma migrate deploy`) |
 | `npm run db:migrate:dev` | Create/apply migrations in development |
-| `npm run db:seed` | Truncate + import `prisma/seed/dump.sql` via `psql` (reads `DATABASE_URL`) |
-| `npm run db:dump` | Export data-only dump into `prisma/seed/dump.sql` via `pg_dump` |
+| `npm run db:seed` | Truncate + import `prisma/seed/dump.sql` (reads `DATABASE_URL`) |
 
-`psql` and `pg_dump` must be installed locally for seed/dump. Seed scripts strip Prisma’s `schema=` query param and add `sslmode=require` for Neon hosts automatically — no separate `PGPORT` required.
+`psql` must be installed locally for seeding. The seed script loads `.env` via dotenv (so `&` in Neon URLs works), strips Prisma’s `schema=` query param, and runs the dump in a single transaction (Neon pooler safe).
 
 ---
 
@@ -199,7 +196,7 @@ Phase notes: [docs/phases/](docs/phases/).
 | `EADDRINUSE :::5000` | `ss -tlnp \| grep 5000` then stop that PID |
 | `EADDRINUSE :::3000` | `ss -tlnp \| grep 3000` then stop that PID |
 | API can't connect to DB | Check `DATABASE_URL` in `backend/.env`; confirm Postgres/Neon is reachable |
-| Seed fails on Neon / port errors | Use Neon **direct** URL (not pooler); keep host/port inside `DATABASE_URL` only — do not set `PGPORT` |
-| Neon SSL errors | Ensure `sslmode=require` in `DATABASE_URL` (seed helper adds it for `*.neon.tech`) |
+| Seed fails / `DATABASE_URL is required` | Quote the URL in `.env` when it contains `&`: `DATABASE_URL="postgresql://...?sslmode=require&schema=devops_cli"` |
+| Neon SSL errors | Ensure `sslmode=require` in `DATABASE_URL` (seed adds it for `*.neon.tech` if missing) |
 | Frontend can't load commands | Confirm API health + `VITE_API_BASE_URL` |
 | Empty / missing tables | `cd backend && npm run db:migrate && npm run db:seed` |

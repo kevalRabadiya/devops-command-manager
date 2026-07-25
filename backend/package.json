@@ -8,8 +8,7 @@
     "dev": "nodemon server.js",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
-    "db:seed": "bash scripts/db-seed.sh",
-    "db:dump": "bash scripts/db-dump.sh",
+    "db:seed": "node scripts/db-seed.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {

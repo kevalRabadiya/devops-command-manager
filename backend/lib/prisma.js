@@ -11,8 +11,9 @@ function describeDatabaseTarget(databaseUrl = process.env.DATABASE_URL) {
     const url = new URL(databaseUrl);
     const dbName = url.pathname.replace(/^\//, '') || '(unknown)';
     const port = url.port || '5432';
+    const schema = url.searchParams.get('schema') || 'public';
     return {
-      label: `${url.hostname}:${port}/${dbName}`,
+      label: `${url.hostname}:${port}/${dbName} (schema: ${schema})`,
       host: url.hostname,
     };
   } catch {
