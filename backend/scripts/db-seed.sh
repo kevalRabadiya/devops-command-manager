@@ -11,21 +11,12 @@ if [[ -f .env ]]; then
   set +a
 fi
 
-: "${PGHOST:?PGHOST is required}"
-: "${PGPORT:?PGPORT is required}"
-: "${PGUSER:?PGUSER is required}"
-: "${PGDATABASE:?PGDATABASE is required}"
-: "${PGPASSWORD:?PGPASSWORD is required}"
-
-export PGPASSWORD
+: "${DATABASE_URL:?DATABASE_URL is required}"
 
 DUMP_FILE="${ROOT_DIR}/prisma/seed/dump.sql"
+PSQL_URL="$(node "${ROOT_DIR}/scripts/db-url.js")"
 
-psql \
-  -h "$PGHOST" \
-  -p "$PGPORT" \
-  -U "$PGUSER" \
-  -d "$PGDATABASE" \
+psql "$PSQL_URL" \
   -v ON_ERROR_STOP=1 \
   -f "$DUMP_FILE"
 

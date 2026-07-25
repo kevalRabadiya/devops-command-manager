@@ -12,7 +12,7 @@ Stand up an Express + PostgreSQL backend for DevOps Command Manager with command
 ### Stack
 
 - Express.js, Prisma (PostgreSQL), Joi, CORS, dotenv
-- PostgreSQL 16 via Docker Compose (`devops_cli` schema)
+- PostgreSQL via `DATABASE_URL` (local or Neon; `devops_cli` schema)
 
 ### Layout
 
@@ -23,13 +23,13 @@ backend/
   prisma/schema.prisma
   prisma/migrations/
   prisma/seed/dump.sql
+  scripts/ (db-seed, db-dump, db-url)
   models/Command.js
   models/Property.js
   controllers/commandController.js
   routes/commands.js
   middleware/ (errorHandler, validate, requestLogger)
   validators/commandSchemas.js
-docker-compose.yml
 ```
 
 ### API endpoints
@@ -53,18 +53,17 @@ docker-compose.yml
 ### Config
 
 - Default API port: **5000**
-- CORS origin: `http://localhost:3000`
-- Env: `backend/.env` (see `.env.example`)
+- CORS: all origins (`CORS_ORIGIN=*`)
+- Env: `backend/.env` — primarily `DATABASE_URL` (see `.env.example`)
 
 ## How to run
 
 ```bash
-# From project root
-docker compose up -d
+# Ensure local Postgres (or set DATABASE_URL to Neon), then:
 cd backend && cp .env.example .env && npm install && npm run db:migrate && npm run db:seed && npm run dev
 ```
 
-See also [COMMANDS.md](../../COMMANDS.md).
+See also [README.md](../../README.md).
 
 ## Notes
 

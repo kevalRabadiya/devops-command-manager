@@ -1,31 +1,46 @@
 # DevOps Command Manager — Commands Cheat Sheet
 
-Quick reference for Docker (Postgres), backend API, ports, and common checks.
+Quick reference for PostgreSQL (local or Neon), backend API, and common checks.
 
 Default ports:
 
-| Service    | Port | Notes                          |
-|------------|------|--------------------------------|
-| API        | 5000 | Express (`backend/`)           |
-| Frontend   | 3000 | Vite React (`frontend/`)       |
-| PostgreSQL | 5432 | Docker Compose service         |
+| Service  | Port | Notes                    |
+|----------|------|--------------------------|
+| API      | 5000 | Express (`backend/`)     |
+| Frontend | 3000 | Vite React (`frontend/`) |
+
+Database is **not** Dockerized. Use local PostgreSQL for development, and set `DATABASE_URL` to your Neon connection string for production / Vercel.
 
 ---
 
 ## First-time setup
 
-```bash
-# From project root
-docker compose up -d
+### 1. Local PostgreSQL
 
+Install and start Postgres on your machine, then create the database:
+
+```bash
+# Example (adjust for your OS / install)
+createdb command_manager
+# or:
+# psql -U postgres -c "CREATE DATABASE command_manager;"
+```
+
+### 2. Backend
+
+```bash
 cd backend
 cp .env.example .env
+# Edit DATABASE_URL if your local user/password/host differ
 npm install
 npm run db:migrate
 npm run db:seed
 npm run dev
+```
 
-# New terminal
+### 3. Frontend (new terminal)
+
+```bash
 cd frontend
 cp .env.example .env
 npm install
@@ -36,85 +51,42 @@ Open http://localhost:3000 (API on http://localhost:5000).
 
 ---
 
-## Docker (PostgreSQL)
+## Database URL (local ↔ Neon)
 
-Run all commands from the **project root** (`command-manager/`).
+The app and seed/migrate scripts use **only** `DATABASE_URL` in `backend/.env`.
 
-### Start / stop / restart
+**Local example:**
 
-```bash
-# Start Postgres in background
-docker compose up -d
-
-# Stop containers (keeps data volume)
-docker compose stop
-
-# Start again after stop
-docker compose start
-
-# Restart Postgres
-docker compose restart
-
-# Stop and remove containers (keeps named volume)
-docker compose down
-
-# Stop, remove containers, and delete DB data volume
-docker compose down -v
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/command_manager?schema=devops_cli
 ```
 
-### Status & logs
+**Neon (production / Vercel) example:**
 
-```bash
-# Container status
-docker compose ps
-
-# Follow Postgres logs
-docker compose logs -f postgres
-
-# Last 100 log lines
-docker compose logs --tail=100 postgres
+```
+DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx.region.aws.neon.tech/neondb?sslmode=require&schema=devops_cli
 ```
 
-### Health & connectivity
+For Neon migrations and seed, use the **direct** (non-pooled) connection string from the Neon dashboard so you avoid pooler / port issues. Keep `sslmode=require` and `schema=devops_cli`.
 
-```bash
-# Is Postgres accepting connections?
-docker exec command-manager-db pg_isready -U postgres -d command_manager
+On Vercel, set the same `DATABASE_URL` (and `CORS_ORIGIN=*`) as environment variables for the backend — you do not need separate `PGHOST` / `PGPORT` vars.
 
-# Open interactive psql
-docker exec -it command-manager-db psql -U postgres -d command_manager
-
-# Useful SQL once inside psql:
-#   SET search_path TO devops_cli;
-#   \dt
-#   SELECT COUNT(*) FROM commands;
-#   \q
-```
-
-### Reset / reseed data (destructive to rows)
-
-Schema is managed by Prisma migrations. Sample data comes from a SQL dump only.
+### Migrate & seed
 
 ```bash
 cd backend
 
-# Apply migrations (DDL)
-npm run db:migrate
-
-# Truncate tables and import prisma/seed/dump.sql
-npm run db:seed
-
-# Export current DB data back into prisma/seed/dump.sql
-npm run db:dump
+npm run db:migrate   # Prisma migrations (DDL)
+npm run db:seed      # Import prisma/seed/dump.sql via psql + DATABASE_URL
+npm run db:dump      # Export current data back into dump.sql
 ```
 
-To wipe schema entirely and recreate:
+To wipe the app schema and recreate:
 
 ```bash
-docker exec command-manager-db psql -U postgres -d command_manager \
-  -c "DROP SCHEMA IF EXISTS devops_cli CASCADE;"
-
 cd backend
+# Uses cleaned DATABASE_URL (strips Prisma schema=; adds Neon SSL if needed)
+psql "$(node scripts/db-url.js)" -c 'DROP SCHEMA IF EXISTS devops_cli CASCADE;'
 npm run db:migrate
 npm run db:seed
 ```
@@ -126,28 +98,29 @@ npm run db:seed
 ```bash
 cd backend
 
-# Install dependencies (also runs prisma generate)
 npm install
-
-# Apply migrations + seed sample data (first time / after wipe)
 npm run db:migrate
 npm run db:seed
-
-# Dev server (auto-reload with nodemon)
-npm run dev
-
-# Production-style start
-npm start
+npm run dev          # nodemon
+npm start            # production-style
 ```
 
-Env file: `backend/.env` (copy from `.env.example`). Requires `DATABASE_URL` plus `PG*` vars for dump/seed scripts.
+Env file: `backend/.env` (copy from `.env.example`).
+
+| Variable       | Purpose |
+|----------------|---------|
+| `DATABASE_URL` | Postgres connection (local or Neon). Only DB setting you need to change between environments. |
+| `CORS_ORIGIN`  | `*` allows all origins (default). Or a comma-separated list of origins. |
+| `PORT`         | API port (default `5000`) |
 
 | Script | Purpose |
 |--------|---------|
 | `npm run db:migrate` | Apply Prisma migrations (`prisma migrate deploy`) |
 | `npm run db:migrate:dev` | Create/apply migrations in development |
-| `npm run db:seed` | Truncate + import `prisma/seed/dump.sql` via `psql` |
+| `npm run db:seed` | Truncate + import `prisma/seed/dump.sql` via `psql` (reads `DATABASE_URL`) |
 | `npm run db:dump` | Export data-only dump into `prisma/seed/dump.sql` via `pg_dump` |
+
+`psql` and `pg_dump` must be installed locally for seed/dump. Seed scripts strip Prisma’s `schema=` query param and add `sslmode=require` for Neon hosts automatically — no separate `PGPORT` required.
 
 ---
 
@@ -155,14 +128,8 @@ Env file: `backend/.env` (copy from `.env.example`). Requires `DATABASE_URL` plu
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Dev server on port 3000
 npm run dev
-
-# Production build
 npm run build
 ```
 
@@ -172,59 +139,37 @@ Env file: `frontend/.env` (copy from `.env.example`).
 VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
-### Verify frontend
+On Vercel (see `vercel.json` rewrites), set:
 
-```bash
-# Dev server responds
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000
-
-# Free port 3000 if stuck
-# fuser -k 3000/tcp
+```
+VITE_API_BASE_URL=/api
 ```
 
 ---
 
-## Verify ports
+## Deploy on Vercel + Neon
 
-```bash
-# What is listening on API / frontend / Postgres ports?
-ss -tlnp | grep -E ':5000|:3000|:5432'
-
-# Or with lsof (if installed)
-lsof -i :5000
-lsof -i :5432
-
-# Free port 5000 if something is stuck (Linux)
-# fuser -k 5000/tcp
-```
+1. Create a Neon project and copy the **direct** connection string.
+2. Append `?sslmode=require&schema=devops_cli` (or merge with existing query params).
+3. From your machine (once), point `backend/.env` at Neon (or export `DATABASE_URL`) and run:
+   ```bash
+   cd backend && npm run db:migrate && npm run db:seed
+   ```
+4. In Vercel project settings, set:
+   - `DATABASE_URL` = Neon URL (same as above)
+   - `CORS_ORIGIN` = `*`
+   - `VITE_API_BASE_URL` = `/api` (frontend build)
+5. Deploy. Switching environments is only a `DATABASE_URL` change.
 
 ---
 
 ## Verify API
 
 ```bash
-# Health check
 curl -s http://localhost:5000/health
-
-# List commands (paginated)
 curl -s "http://localhost:5000/api/commands?page=1&limit=5"
-
-# Search
 curl -s "http://localhost:5000/api/commands/search?q=mysqldump"
-
-# Get one command with properties
 curl -s http://localhost:5000/api/commands/1
-
-# Create (example)
-curl -s -X POST http://localhost:5000/api/commands \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "echo-test",
-    "description": "Test",
-    "command_template": "echo {{message}}",
-    "category": "Linux",
-    "tags": ["test"]
-  }'
 ```
 
 ---
@@ -232,19 +177,13 @@ curl -s -X POST http://localhost:5000/api/commands \
 ## Typical daily workflow
 
 ```bash
-# 1. Start DB
-docker compose up -d
-
-# 2. Confirm DB ready
-docker exec command-manager-db pg_isready -U postgres -d command_manager
-
-# 3. Start API (migrate/seed already done once)
+# 1. Ensure local Postgres is running and DATABASE_URL in backend/.env is correct
 cd backend && npm run dev
 
-# 4. Start frontend (new terminal)
+# 2. Frontend (new terminal)
 cd frontend && npm run dev
 
-# 5. Confirm
+# 3. Confirm
 curl -s http://localhost:5000/health
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000
 ```
@@ -257,9 +196,10 @@ Phase notes: [docs/phases/](docs/phases/).
 
 | Problem | What to try |
 |---------|-------------|
-| `EADDRINUSE :::5000` | Find/kill process: `ss -tlnp \| grep 5000` then stop that PID |
-| `EADDRINUSE :::3000` | Find/kill process: `ss -tlnp \| grep 3000` then stop that PID |
-| API can't connect to DB | `docker compose ps` and `pg_isready` as above; check `.env` |
-| Frontend can't load commands | Confirm API health + `VITE_API_BASE_URL` in `frontend/.env` |
+| `EADDRINUSE :::5000` | `ss -tlnp \| grep 5000` then stop that PID |
+| `EADDRINUSE :::3000` | `ss -tlnp \| grep 3000` then stop that PID |
+| API can't connect to DB | Check `DATABASE_URL` in `backend/.env`; confirm Postgres/Neon is reachable |
+| Seed fails on Neon / port errors | Use Neon **direct** URL (not pooler); keep host/port inside `DATABASE_URL` only — do not set `PGPORT` |
+| Neon SSL errors | Ensure `sslmode=require` in `DATABASE_URL` (seed helper adds it for `*.neon.tech`) |
+| Frontend can't load commands | Confirm API health + `VITE_API_BASE_URL` |
 | Empty / missing tables | `cd backend && npm run db:migrate && npm run db:seed` |
-| Port 5432 already in use | Stop local Postgres, or change host port in `docker-compose.yml` |
