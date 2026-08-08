@@ -121,7 +121,7 @@ export default function Layout() {
 
       <footer className="mx-auto max-w-6xl px-4 pb-10 pt-6 text-center">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Built for fast DevOps command lookup · Phase 1
+          Built for fast DevOps command lookup · Phase 3
         </p>
         <p className="mt-1.5 text-xs text-slate-400/60 dark:text-slate-500/50">
           © {new Date().getFullYear()} Keval Rabadiya. All rights reserved.

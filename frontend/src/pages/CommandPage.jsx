@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import commandService from '../services/commandService';
+import templateService from '../services/templateService';
 import PropertyForm from '../components/PropertyForm';
+import SaveTemplateModal from '../components/SaveTemplateModal';
 import useClipboard from '../hooks/useClipboard';
 import { useApp } from '../context/AppContext';
 import {
@@ -12,14 +14,19 @@ import {
 
 export default function CommandPage() {
   const { id } = useParams();
+  const location = useLocation();
   const { copy } = useClipboard();
-  const { showToast } = useApp();
+  const { showToast, recordCopy } = useApp();
   const [command, setCommand] = useState(null);
   const [values, setValues] = useState({});
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [commandTemplates, setCommandTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,8 +38,12 @@ export default function CommandPage() {
         const data = await commandService.getById(id);
         if (cancelled) return;
         setCommand(data);
-        setValues(buildDefaultValues(data.properties || []));
+
+        const defaults = buildDefaultValues(data.properties || []);
+        const fromState = location.state?.propertyValues;
+        setValues(fromState ? { ...defaults, ...fromState } : defaults);
         setErrors({});
+        setSelectedTemplateId('');
       } catch (err) {
         if (!cancelled) setError(err.message);
       } finally {
@@ -41,6 +52,24 @@ export default function CommandPage() {
     }
 
     load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, location.state?.propertyValues]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTemplates() {
+      try {
+        const result = await templateService.list({ command_id: id, limit: 100 });
+        if (!cancelled) setCommandTemplates(result.data || []);
+      } catch {
+        if (!cancelled) setCommandTemplates([]);
+      }
+    }
+
+    if (id) loadTemplates();
     return () => {
       cancelled = true;
     };
@@ -53,8 +82,46 @@ export default function CommandPage() {
 
   const handleValuesChange = (next) => {
     setValues(next);
+    setSelectedTemplateId('');
     if (Object.keys(errors).length > 0) {
       setErrors(validatePropertyValues(command?.properties || [], next));
+    }
+  };
+
+  const handleTemplateSelect = (e) => {
+    const templateId = e.target.value;
+    setSelectedTemplateId(templateId);
+    if (!templateId) return;
+
+    const template = commandTemplates.find((t) => String(t.id) === templateId);
+    if (!template) return;
+
+    const defaults = buildDefaultValues(command.properties || []);
+    setValues({ ...defaults, ...template.property_values });
+    setErrors({});
+  };
+
+  const handleSaveTemplate = async ({ template_name, description }) => {
+    const nextErrors = validatePropertyValues(command.properties || [], values);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      showToast('Fix validation errors before saving', 'error');
+      throw new Error('Fix validation errors before saving');
+    }
+
+    setSavingTemplate(true);
+    try {
+      const created = await templateService.create({
+        command_id: command.id,
+        template_name,
+        description,
+        property_values: values,
+      });
+      setCommandTemplates((prev) => [created, ...prev]);
+      setSelectedTemplateId(String(created.id));
+      showToast('Template saved', 'success');
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -70,6 +137,19 @@ export default function CommandPage() {
     if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+
+      try {
+        await recordCopy({
+          command_id: command.id,
+          copied_command: preview,
+          property_values: values,
+          command_template_id: selectedTemplateId
+            ? Number(selectedTemplateId)
+            : undefined,
+        });
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
     }
   };
 
@@ -135,13 +215,47 @@ export default function CommandPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="glass-strong rounded-2xl p-4 shadow-sm dark:shadow-card sm:p-6">
-          <h3 className="mb-5 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            <svg className="h-4 w-4 text-brand-500 dark:text-brand-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            Configure
-          </h3>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <svg className="h-4 w-4 text-brand-500 dark:text-brand-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              Configure
+            </h3>
+            <button
+              type="button"
+              onClick={() => setSaveModalOpen(true)}
+              className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/[0.06]"
+            >
+              Save template
+            </button>
+          </div>
+
+          {commandTemplates.length > 0 && (
+            <div className="mb-5">
+              <label
+                htmlFor="load-template"
+                className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500"
+              >
+                Load template
+              </label>
+              <select
+                id="load-template"
+                value={selectedTemplateId}
+                onChange={handleTemplateSelect}
+                className="input-base cursor-pointer py-2 text-sm"
+              >
+                <option value="">Select a saved template…</option>
+                {commandTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.template_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <PropertyForm
             properties={command.properties || []}
             values={values}
@@ -209,6 +323,13 @@ export default function CommandPage() {
           )}
         </section>
       </div>
+
+      <SaveTemplateModal
+        open={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        onSave={handleSaveTemplate}
+        saving={savingTemplate}
+      />
     </div>
   );
 }

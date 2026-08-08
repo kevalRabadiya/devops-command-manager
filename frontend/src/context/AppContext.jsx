@@ -7,6 +7,7 @@ import {
   useReducer,
   useState,
 } from 'react';
+import copyHistoryService from '../services/copyHistoryService';
 
 const AppContext = createContext(null);
 
@@ -30,6 +31,8 @@ const initialState = {
   loading: false,
   error: null,
   toasts: [],
+  copyHistory: [],
+  historyLoading: false,
 };
 
 function reducer(state, action) {
@@ -50,6 +53,15 @@ function reducer(state, action) {
       return {
         ...state,
         toasts: state.toasts.filter((t) => t.id !== action.payload),
+      };
+    case 'SET_COPY_HISTORY':
+      return { ...state, copyHistory: action.payload };
+    case 'SET_HISTORY_LOADING':
+      return { ...state, historyLoading: action.payload };
+    case 'PREPEND_COPY_HISTORY':
+      return {
+        ...state,
+        copyHistory: [action.payload, ...state.copyHistory].slice(0, 20),
       };
     default:
       return state;
@@ -106,6 +118,28 @@ export function AppProvider({ children }) {
     dispatch({ type: 'DISMISS_TOAST', payload: id });
   }, []);
 
+  const refreshCopyHistory = useCallback(async () => {
+    dispatch({ type: 'SET_HISTORY_LOADING', payload: true });
+    try {
+      const result = await copyHistoryService.list({ limit: 20 });
+      dispatch({ type: 'SET_COPY_HISTORY', payload: result.data || [] });
+    } catch {
+      dispatch({ type: 'SET_COPY_HISTORY', payload: [] });
+    } finally {
+      dispatch({ type: 'SET_HISTORY_LOADING', payload: false });
+    }
+  }, []);
+
+  const recordCopy = useCallback(async (payload) => {
+    const entry = await copyHistoryService.create(payload);
+    dispatch({ type: 'PREPEND_COPY_HISTORY', payload: entry });
+    return entry;
+  }, []);
+
+  useEffect(() => {
+    refreshCopyHistory();
+  }, [refreshCopyHistory]);
+
   const value = useMemo(
     () => ({
       ...state,
@@ -118,6 +152,8 @@ export function AppProvider({ children }) {
       setError,
       showToast,
       dismissToast,
+      refreshCopyHistory,
+      recordCopy,
     }),
     [
       state,
@@ -130,6 +166,8 @@ export function AppProvider({ children }) {
       setError,
       showToast,
       dismissToast,
+      refreshCopyHistory,
+      recordCopy,
     ]
   );
 

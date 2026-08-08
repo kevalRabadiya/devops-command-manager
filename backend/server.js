@@ -5,7 +5,10 @@ const cors = require('cors');
 const { requestLogger } = require('./middleware/requestLogger');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const commandsRouter = require('./routes/commands');
+const categoriesRouter = require('./routes/categories');
 const featureRequestsRouter = require('./routes/featureRequests');
+const templatesRouter = require('./routes/templates');
+const copyHistoryRouter = require('./routes/copyHistory');
 const { connectDatabase } = require('./lib/prisma');
 
 const app = express();
@@ -33,7 +36,10 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/commands', commandsRouter);
+app.use('/api/categories', categoriesRouter);
 app.use('/api/feature-requests', featureRequestsRouter);
+app.use('/api/templates', templatesRouter);
+app.use('/api/copy-history', copyHistoryRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -2660,3 +2660,973 @@ VALUES
   (155, 'options', 'text', '', false, '--no-edit, --no-verify', 'Amend options (--no-edit keeps message)', 1),
   (155, 'message', 'text', '', true, 'Fix typo in login validation', 'New commit message', 2);
 
+
+-- ============================================
+-- POSTGRESQL - ADMIN & MONITORING QUERIES
+-- ============================================
+
+-- psql-connect (156)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'psql-connect',
+  'Connect to a PostgreSQL server via the psql interactive shell',
+  'psql -h {{host}} -U {{username}} -d {{database}} -p {{port}} {{options}}',
+  'PostgreSQL',
+  ARRAY['connect', 'psql', 'client', 'postgresql'],
+  'psql -h localhost -U postgres -d mydb -p 5432',
+  'Opens an interactive session. Use -c "SQL" to run one statement non-interactively without a shell.'
+);
+
+-- pg-db-size (157)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-db-size',
+  'Check the on-disk size of a specific PostgreSQL database',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "SELECT pg_size_pretty(pg_database_size(''{{database}}''));"',
+  'PostgreSQL',
+  ARRAY['size', 'database', 'disk', 'postgresql', 'monitoring'],
+  'psql -h localhost -U postgres -p 5432 -d mydb -c "SELECT pg_size_pretty(pg_database_size(''mydb''));"',
+  'Returns a human-readable size (e.g. 245 MB) for the target database.'
+);
+
+-- pg-all-db-sizes (158)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-all-db-sizes',
+  'List sizes of all PostgreSQL databases on the server',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d postgres -c "SELECT datname, pg_size_pretty(pg_database_size(datname)) AS size FROM pg_database ORDER BY pg_database_size(datname) DESC;"',
+  'PostgreSQL',
+  ARRAY['size', 'database', 'disk', 'postgresql', 'monitoring'],
+  'psql -h localhost -U postgres -p 5432 -d postgres -c "SELECT datname, pg_size_pretty(pg_database_size(datname)) AS size FROM pg_database ORDER BY pg_database_size(datname) DESC;"',
+  'Useful for spotting which database on the instance is consuming the most disk space.'
+);
+
+-- pg-table-sizes (159)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-table-sizes',
+  'List the largest tables in a PostgreSQL database by total size',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "SELECT relname AS table, pg_size_pretty(pg_total_relation_size(relid)) AS size FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT {{limit}};"',
+  'PostgreSQL',
+  ARRAY['size', 'table', 'disk', 'postgresql', 'monitoring'],
+  'psql -h localhost -U postgres -p 5432 -d mydb -c "SELECT relname AS table, pg_size_pretty(pg_total_relation_size(relid)) AS size FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 20;"',
+  'pg_total_relation_size includes indexes and TOAST data, not just the table heap.'
+);
+
+-- pg-active-connections (160)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-active-connections',
+  'Show active (non-idle) PostgreSQL connections and their current query',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "SELECT pid, usename, datname, client_addr, state, query, query_start FROM pg_stat_activity WHERE state != ''idle'';"',
+  'PostgreSQL',
+  ARRAY['connection', 'monitoring', 'postgresql', 'pg_stat_activity'],
+  'psql -h localhost -U postgres -p 5432 -d mydb -c "SELECT pid, usename, datname, state, query FROM pg_stat_activity WHERE state != ''idle'';"',
+  'Remove the WHERE clause to include idle sessions too.'
+);
+
+-- pg-connection-count (161)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-connection-count',
+  'Count current PostgreSQL connections grouped by database',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "SELECT datname, count(*) FROM pg_stat_activity GROUP BY datname ORDER BY count(*) DESC;"',
+  'PostgreSQL',
+  ARRAY['connection', 'count', 'monitoring', 'postgresql'],
+  'psql -h localhost -U postgres -p 5432 -d mydb -c "SELECT datname, count(*) FROM pg_stat_activity GROUP BY datname ORDER BY count(*) DESC;"',
+  'Compare the total against max_connections (pg-max-connections) to see how close you are to the limit.'
+);
+
+-- pg-kill-connection (162)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-kill-connection',
+  'Terminate a specific PostgreSQL backend/connection by PID',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "SELECT pg_terminate_backend({{pid}});"',
+  'PostgreSQL',
+  ARRAY['connection', 'kill', 'terminate', 'postgresql'],
+  'psql -h localhost -U postgres -p 5432 -d mydb -c "SELECT pg_terminate_backend(12345);"',
+  'Use pg_cancel_backend(pid) instead to cancel just the running query without dropping the connection.'
+);
+
+-- pg-long-running-queries (163)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-long-running-queries',
+  'Find PostgreSQL queries that have been running longer than a given duration',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "SELECT pid, now() - query_start AS duration, state, query FROM pg_stat_activity WHERE state != ''idle'' AND now() - query_start > interval ''{{threshold}}'' ORDER BY duration DESC;"',
+  'PostgreSQL',
+  ARRAY['query', 'performance', 'monitoring', 'postgresql'],
+  'psql -h localhost -U postgres -p 5432 -d mydb -c "SELECT pid, now() - query_start AS duration, query FROM pg_stat_activity WHERE now() - query_start > interval ''5 minutes'';"',
+  'Pair with pg-kill-connection once you have identified an offending pid.'
+);
+
+-- pg-version (164)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-version',
+  'Check the PostgreSQL server version',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "SELECT version();"',
+  'PostgreSQL',
+  ARRAY['version', 'info', 'postgresql'],
+  'psql -h localhost -U postgres -p 5432 -d postgres -c "SELECT version();"',
+  'Reports the full server version string including build platform.'
+);
+
+-- pg-list-databases (165)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-list-databases',
+  'List all databases on a PostgreSQL server',
+  'psql -h {{host}} -U {{username}} -p {{port}} -l {{options}}',
+  'PostgreSQL',
+  ARRAY['list', 'database', 'postgresql'],
+  'psql -h localhost -U postgres -p 5432 -l',
+  'Equivalent to running \l inside an interactive psql session.'
+);
+
+-- pg-list-tables (166)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-list-tables',
+  'List tables in a PostgreSQL schema',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "\dt {{schema}}.*"',
+  'PostgreSQL',
+  ARRAY['list', 'table', 'postgresql'],
+  'psql -h localhost -U postgres -p 5432 -d mydb -c "\dt public.*"',
+  'psql meta-commands like \dt work fine with -c, no need for an interactive session.'
+);
+
+-- pg-create-user (167)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-create-user',
+  'Create a new PostgreSQL role/user with a login password',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "CREATE USER {{new_user}} WITH PASSWORD ''{{new_password}}'' {{options}};"',
+  'PostgreSQL',
+  ARRAY['user', 'role', 'create', 'postgresql', 'security'],
+  'psql -h localhost -U postgres -p 5432 -d postgres -c "CREATE USER app_user WITH PASSWORD ''s3cret'' LOGIN;"',
+  'Add options like LOGIN, CREATEDB, or SUPERUSER as needed. Avoid SUPERUSER for application accounts.'
+);
+
+-- pg-grant-privileges (168)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-grant-privileges',
+  'Grant privileges on a database to a PostgreSQL user',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "GRANT {{privileges}} ON DATABASE {{target_database}} TO {{target_user}};"',
+  'PostgreSQL',
+  ARRAY['grant', 'privileges', 'user', 'postgresql', 'security'],
+  'psql -h localhost -U postgres -p 5432 -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE mydb TO app_user;"',
+  'Prefer the narrowest privilege set the application actually needs over ALL PRIVILEGES.'
+);
+
+-- pg-vacuum-analyze (169)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-vacuum-analyze',
+  'Reclaim storage and refresh planner statistics for a PostgreSQL table or database',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "VACUUM (ANALYZE, VERBOSE) {{table}};"',
+  'PostgreSQL',
+  ARRAY['vacuum', 'maintenance', 'performance', 'postgresql'],
+  'psql -h localhost -U postgres -p 5432 -d mydb -c "VACUUM (ANALYZE, VERBOSE) orders;"',
+  'Leave table empty to vacuum the whole database. Use VACUUM FULL sparingly - it takes an exclusive lock.'
+);
+
+-- pg-isready (170)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-isready',
+  'Check whether a PostgreSQL server is up and accepting connections',
+  'pg_isready -h {{host}} -p {{port}} -U {{username}} {{options}}',
+  'PostgreSQL',
+  ARRAY['health', 'connection', 'check', 'postgresql'],
+  'pg_isready -h localhost -p 5432 -U postgres',
+  'Exits 0 when accepting connections - handy in health checks and scripts.'
+);
+
+-- pg-locks (171)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'pg-locks',
+  'Show PostgreSQL sessions currently waiting on a lock (blocked queries)',
+  'psql -h {{host}} -U {{username}} -p {{port}} -d {{database}} -c "SELECT pid, relation::regclass, mode, granted, query FROM pg_locks JOIN pg_stat_activity USING (pid) WHERE NOT granted;"',
+  'PostgreSQL',
+  ARRAY['locks', 'blocking', 'monitoring', 'postgresql'],
+  'psql -h localhost -U postgres -p 5432 -d mydb -c "SELECT pid, relation::regclass, mode, granted FROM pg_locks JOIN pg_stat_activity USING (pid) WHERE NOT granted;"',
+  'Remove "WHERE NOT granted" to see every lock, not just the ones blocked waiting for one.'
+);
+
+-- ============================================
+-- MYSQL - ADMIN & MONITORING QUERIES
+-- ============================================
+
+-- mysql-connect (172)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-connect',
+  'Connect to a MySQL/MariaDB server via the CLI client',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} {{database}}',
+  'MySQL',
+  ARRAY['connect', 'client', 'mysql'],
+  'mysql -h localhost -u root -ppassword -P 3306 mydb',
+  'Omit -p{{password}} (leave it blank) to be prompted interactively instead - safer than inline passwords.'
+);
+
+-- mysql-db-size (173)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-db-size',
+  'Check the size of a specific MySQL database',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "SELECT table_schema AS db, ROUND(SUM(data_length+index_length)/1024/1024,2) AS size_mb FROM information_schema.tables WHERE table_schema = ''{{database}}'';"',
+  'MySQL',
+  ARRAY['size', 'database', 'disk', 'mysql', 'monitoring'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "SELECT table_schema, ROUND(SUM(data_length+index_length)/1024/1024,2) AS size_mb FROM information_schema.tables WHERE table_schema=''mydb'';"',
+  'Size is data + index length in MB for the given schema.'
+);
+
+-- mysql-all-db-sizes (174)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-all-db-sizes',
+  'List sizes of all MySQL databases on the server',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "SELECT table_schema AS db, ROUND(SUM(data_length+index_length)/1024/1024,2) AS size_mb FROM information_schema.tables GROUP BY table_schema ORDER BY size_mb DESC;"',
+  'MySQL',
+  ARRAY['size', 'database', 'disk', 'mysql', 'monitoring'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "SELECT table_schema, ROUND(SUM(data_length+index_length)/1024/1024,2) AS size_mb FROM information_schema.tables GROUP BY table_schema ORDER BY size_mb DESC;"',
+  'Useful for spotting which schema on the instance is consuming the most disk space.'
+);
+
+-- mysql-table-sizes (175)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-table-sizes',
+  'List the largest tables in a MySQL database by size',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "SELECT table_name, ROUND((data_length+index_length)/1024/1024,2) AS size_mb FROM information_schema.tables WHERE table_schema = ''{{database}}'' ORDER BY size_mb DESC LIMIT {{limit}};"',
+  'MySQL',
+  ARRAY['size', 'table', 'disk', 'mysql', 'monitoring'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "SELECT table_name, ROUND((data_length+index_length)/1024/1024,2) AS size_mb FROM information_schema.tables WHERE table_schema=''mydb'' ORDER BY size_mb DESC LIMIT 20;"',
+  'Includes index size alongside data size for a fuller picture of table footprint.'
+);
+
+-- mysql-show-processlist (176)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-show-processlist',
+  'Show currently running MySQL connections and their queries',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "SHOW FULL PROCESSLIST;"',
+  'MySQL',
+  ARRAY['connection', 'query', 'monitoring', 'mysql', 'processlist'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "SHOW FULL PROCESSLIST;"',
+  'SHOW FULL PROCESSLIST avoids truncating the Info column, unlike plain SHOW PROCESSLIST.'
+);
+
+-- mysql-connection-count (177)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-connection-count',
+  'Count currently connected MySQL threads',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "SHOW STATUS WHERE variable_name = ''Threads_connected'';"',
+  'MySQL',
+  ARRAY['connection', 'count', 'monitoring', 'mysql'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "SHOW STATUS WHERE variable_name=''Threads_connected'';"',
+  'Compare against max_connections (mysql-show-status with pattern max_connections) to check headroom.'
+);
+
+-- mysql-kill-process (178)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-kill-process',
+  'Kill a specific MySQL connection or query by its process ID',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "KILL {{process_id}};"',
+  'MySQL',
+  ARRAY['kill', 'connection', 'terminate', 'mysql'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "KILL 482;"',
+  'Find the process_id first via mysql-show-processlist.'
+);
+
+-- mysql-version (179)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-version',
+  'Check the MySQL/MariaDB server version',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "SELECT VERSION();"',
+  'MySQL',
+  ARRAY['version', 'info', 'mysql'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "SELECT VERSION();"',
+  'Reports the server version string, including any vendor suffix (e.g. -MariaDB).'
+);
+
+-- mysql-show-databases (180)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-show-databases',
+  'List all databases on a MySQL server',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "SHOW DATABASES;"',
+  'MySQL',
+  ARRAY['list', 'database', 'mysql'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "SHOW DATABASES;"',
+  'Lists every schema the connected user is permitted to see.'
+);
+
+-- mysql-show-tables (181)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-show-tables',
+  'List all tables in a MySQL database',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -D {{database}} -e "SHOW TABLES;"',
+  'MySQL',
+  ARRAY['list', 'table', 'mysql'],
+  'mysql -h localhost -u root -ppassword -P 3306 -D mydb -e "SHOW TABLES;"',
+  'Use SHOW TABLE STATUS instead if you also want row counts and engine info.'
+);
+
+-- mysql-create-user-grant (182)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-create-user-grant',
+  'Create a MySQL user and grant privileges on a database',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "CREATE USER ''{{new_user}}''@''{{new_host}}'' IDENTIFIED BY ''{{new_password}}''; GRANT {{privileges}} ON {{target_database}}.* TO ''{{new_user}}''@''{{new_host}}''; FLUSH PRIVILEGES;"',
+  'MySQL',
+  ARRAY['user', 'grant', 'privileges', 'create', 'mysql', 'security'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "CREATE USER ''app''@''%'' IDENTIFIED BY ''s3cret''; GRANT ALL ON mydb.* TO ''app''@''%''; FLUSH PRIVILEGES;"',
+  'Prefer the narrowest privilege set over ALL, and scope new_host tighter than % when possible.'
+);
+
+-- mysql-optimize-table (183)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-optimize-table',
+  'Reclaim unused space and defragment a MySQL table',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -D {{database}} -e "OPTIMIZE TABLE {{table}};"',
+  'MySQL',
+  ARRAY['optimize', 'maintenance', 'performance', 'mysql'],
+  'mysql -h localhost -u root -ppassword -P 3306 -D mydb -e "OPTIMIZE TABLE orders;"',
+  'On InnoDB this rebuilds the table - can be slow and briefly lock the table on large data sets.'
+);
+
+-- mysqladmin-ping (184)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysqladmin-ping',
+  'Check whether a MySQL server is up and accepting connections',
+  'mysqladmin -h {{host}} -u {{username}} -p{{password}} -P {{port}} ping',
+  'MySQL',
+  ARRAY['health', 'connection', 'check', 'mysql'],
+  'mysqladmin -h localhost -u root -ppassword -P 3306 ping',
+  'Prints "mysqld is alive" and exits 0 on success - handy in health checks and scripts.'
+);
+
+-- mysql-show-status (185)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'mysql-show-status',
+  'Show global MySQL server status counters (uptime, queries, connections, etc.)',
+  'mysql -h {{host}} -u {{username}} -p{{password}} -P {{port}} -e "SHOW GLOBAL STATUS LIKE ''{{pattern}}'';"',
+  'MySQL',
+  ARRAY['status', 'monitoring', 'mysql'],
+  'mysql -h localhost -u root -ppassword -P 3306 -e "SHOW GLOBAL STATUS LIKE ''Threads%'';"',
+  'Common patterns: Threads%, Uptime, Queries, Slow_queries, Connections.'
+);
+
+-- ============================================
+-- AWS - IMPORTANT / OPERATIONAL COMMANDS
+-- ============================================
+
+-- aws-configure (186)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-configure',
+  'Configure AWS CLI credentials and default region for a profile',
+  'aws configure {{options}}',
+  'AWS',
+  ARRAY['config', 'credentials', 'setup', 'aws'],
+  'aws configure --profile prod',
+  'Prompts for Access Key ID, Secret Access Key, default region, and output format.'
+);
+
+-- aws-whoami (187)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-whoami',
+  'Show the identity (account, user/role, ARN) behind the current AWS credentials',
+  'aws sts get-caller-identity {{options}}',
+  'AWS',
+  ARRAY['identity', 'sts', 'credentials', 'aws'],
+  'aws sts get-caller-identity --profile prod',
+  'Quick sanity check for which account/role a profile or environment is actually using.'
+);
+
+-- aws-s3-cp (188)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-s3-cp',
+  'Copy a file or object to or from AWS S3',
+  'aws s3 cp {{source}} {{destination}} {{options}}',
+  'AWS',
+  ARRAY['s3', 'copy', 'upload', 'download', 'aws'],
+  'aws s3 cp ./backup.sql s3://my-bucket/backups/backup.sql',
+  'Works both directions - swap source/destination to download instead of upload.'
+);
+
+-- aws-s3-sync (189)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-s3-sync',
+  'Sync a local directory with an S3 bucket (or vice versa)',
+  'aws s3 sync {{source}} {{destination}} {{options}}',
+  'AWS',
+  ARRAY['s3', 'sync', 'aws'],
+  'aws s3 sync ./dist s3://my-bucket/site --delete',
+  '--delete removes destination files that no longer exist in the source - omit it for additive sync only.'
+);
+
+-- aws-s3-rm (190)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-s3-rm',
+  'Delete object(s) from an S3 bucket',
+  'aws s3 rm {{target}} {{options}}',
+  'AWS',
+  ARRAY['s3', 'delete', 'aws'],
+  'aws s3 rm s3://my-bucket/old-logs/ --recursive',
+  '--recursive is required to delete a whole prefix/folder rather than a single object.'
+);
+
+-- aws-ec2-start (191)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-ec2-start',
+  'Start one or more stopped EC2 instances',
+  'aws ec2 start-instances --instance-ids {{instance_ids}} {{options}}',
+  'AWS',
+  ARRAY['ec2', 'start', 'instance', 'aws'],
+  'aws ec2 start-instances --instance-ids i-0123456789abcdef0',
+  'Accepts multiple space-separated instance IDs in a single call.'
+);
+
+-- aws-ec2-stop (192)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-ec2-stop',
+  'Stop one or more running EC2 instances',
+  'aws ec2 stop-instances --instance-ids {{instance_ids}} {{options}}',
+  'AWS',
+  ARRAY['ec2', 'stop', 'instance', 'aws'],
+  'aws ec2 stop-instances --instance-ids i-0123456789abcdef0',
+  'Add --hibernate to hibernate instead of a plain stop, if the instance supports it.'
+);
+
+-- aws-ec2-security-groups (193)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-ec2-security-groups',
+  'Describe EC2 security groups and their inbound/outbound rules',
+  'aws ec2 describe-security-groups {{options}}',
+  'AWS',
+  ARRAY['ec2', 'security-group', 'network', 'aws'],
+  'aws ec2 describe-security-groups --group-ids sg-0123456789abcdef0',
+  'Omit --group-ids to list every security group in the region.'
+);
+
+-- aws-rds-describe (194)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-rds-describe',
+  'Describe RDS database instances and their status',
+  'aws rds describe-db-instances {{options}}',
+  'AWS',
+  ARRAY['rds', 'database', 'aws'],
+  'aws rds describe-db-instances --query "DBInstances[*].[DBInstanceIdentifier,DBInstanceStatus]" --output table',
+  'Use --db-instance-identifier to target a single instance instead of listing all of them.'
+);
+
+-- aws-rds-snapshot (195)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-rds-snapshot',
+  'Create a manual snapshot of an RDS database instance',
+  'aws rds create-db-snapshot --db-instance-identifier {{db_instance_id}} --db-snapshot-identifier {{snapshot_id}} {{options}}',
+  'AWS',
+  ARRAY['rds', 'snapshot', 'backup', 'aws'],
+  'aws rds create-db-snapshot --db-instance-identifier prod-db --db-snapshot-identifier prod-db-2024-01-15',
+  'Snapshot creation is asynchronous - poll aws-rds-describe to check when it completes.'
+);
+
+-- aws-logs-tail (196)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-logs-tail',
+  'Tail/stream a CloudWatch Logs log group in near real time',
+  'aws logs tail {{log_group}} {{options}}',
+  'AWS',
+  ARRAY['cloudwatch', 'logs', 'monitoring', 'aws'],
+  'aws logs tail /aws/lambda/my-function --follow --since 1h',
+  '--follow keeps streaming new events; --since accepts values like 1h, 30m, or an ISO timestamp.'
+);
+
+-- aws-cloudwatch-metrics (197)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-cloudwatch-metrics',
+  'Fetch CloudWatch metric statistics for a namespace and metric',
+  'aws cloudwatch get-metric-statistics --namespace {{namespace}} --metric-name {{metric_name}} --start-time {{start_time}} --end-time {{end_time}} --period {{period}} --statistics {{statistics}} {{options}}',
+  'AWS',
+  ARRAY['cloudwatch', 'metrics', 'monitoring', 'aws'],
+  'aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name CPUUtilization --start-time 2024-01-15T00:00:00Z --end-time 2024-01-15T01:00:00Z --period 300 --statistics Average',
+  'Start/end times must be ISO 8601. Period is in seconds and must align with the metric''s resolution.'
+);
+
+-- aws-iam-list-users (198)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-iam-list-users',
+  'List IAM users in the AWS account',
+  'aws iam list-users {{options}}',
+  'AWS',
+  ARRAY['iam', 'users', 'security', 'aws'],
+  'aws iam list-users --query "Users[*].[UserName,CreateDate]" --output table',
+  'Combine with aws iam list-attached-user-policies to audit what each user can do.'
+);
+
+-- aws-lambda-invoke (199)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-lambda-invoke',
+  'Invoke an AWS Lambda function and capture its response',
+  'aws lambda invoke --function-name {{function_name}} --payload {{payload}} {{options}} {{output_file}}',
+  'AWS',
+  ARRAY['lambda', 'invoke', 'serverless', 'aws'],
+  'aws lambda invoke --function-name my-func --payload ''{"key":"value"}'' response.json',
+  'Add --cli-binary-format raw-in-base64-out when using AWS CLI v2 with a raw JSON payload.'
+);
+
+-- aws-ecs-update-service (200)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-ecs-update-service',
+  'Force a new deployment or update settings of an ECS service',
+  'aws ecs update-service --cluster {{cluster}} --service {{service}} {{options}}',
+  'AWS',
+  ARRAY['ecs', 'deploy', 'container', 'aws'],
+  'aws ecs update-service --cluster prod --service api --force-new-deployment',
+  '--force-new-deployment rolls containers with the same task definition, picking up a fresh image tag (e.g. :latest).'
+);
+
+-- aws-elb-describe (201)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-elb-describe',
+  'Describe target group health behind an Application/Network Load Balancer',
+  'aws elbv2 describe-target-health --target-group-arn {{target_group_arn}} {{options}}',
+  'AWS',
+  ARRAY['elb', 'load-balancer', 'health', 'aws'],
+  'aws elbv2 describe-target-health --target-group-arn arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/api/abc123',
+  'Use aws elbv2 describe-load-balancers first to find ARNs if you don''t have one handy.'
+);
+
+-- aws-sso-login (202)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-sso-login',
+  'Authenticate an AWS CLI profile via IAM Identity Center (SSO)',
+  'aws sso login --profile {{profile}} {{options}}',
+  'AWS',
+  ARRAY['sso', 'login', 'auth', 'aws'],
+  'aws sso login --profile prod',
+  'Opens a browser for authentication; the resulting session token is cached for the profile.'
+);
+
+-- aws-cloudformation-describe-stacks (203)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'aws-cloudformation-describe-stacks',
+  'Describe CloudFormation stacks and their current status',
+  'aws cloudformation describe-stacks {{options}}',
+  'AWS',
+  ARRAY['cloudformation', 'stack', 'infrastructure', 'aws'],
+  'aws cloudformation describe-stacks --stack-name prod-network --query "Stacks[*].StackStatus"',
+  'Omit --stack-name to list every stack in the region.'
+);
+
+-- ============================================
+-- COMMAND PROPERTIES - POSTGRESQL / MYSQL / AWS
+-- ============================================
+
+-- psql-connect (156)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (156, 'host', 'text', 'localhost', true, '192.168.1.1 or db.example.com', 'PostgreSQL host address or IP', 1),
+  (156, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (156, 'database', 'text', 'postgres', false, 'database_name', 'Database to connect to', 3),
+  (156, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 4),
+  (156, 'options', 'text', '', false, '-c "SELECT 1;"', 'Additional psql options', 5);
+
+-- pg-db-size (157)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (157, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (157, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (157, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (157, 'database', 'text', '', true, 'database_name', 'Database to check the size of', 4);
+
+-- pg-all-db-sizes (158)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (158, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (158, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (158, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3);
+
+-- pg-table-sizes (159)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (159, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (159, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (159, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (159, 'database', 'text', '', true, 'database_name', 'Database to inspect', 4),
+  (159, 'limit', 'number', '20', false, '20', 'Number of tables to show', 5);
+
+-- pg-active-connections (160)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (160, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (160, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (160, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (160, 'database', 'text', 'postgres', true, 'database_name', 'Database to connect to', 4);
+
+-- pg-connection-count (161)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (161, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (161, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (161, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (161, 'database', 'text', 'postgres', true, 'database_name', 'Database to connect to', 4);
+
+-- pg-kill-connection (162)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (162, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (162, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (162, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (162, 'database', 'text', 'postgres', true, 'database_name', 'Database to connect to', 4),
+  (162, 'pid', 'number', '', true, '12345', 'Backend process ID to terminate', 5);
+
+-- pg-long-running-queries (163)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (163, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (163, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (163, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (163, 'database', 'text', 'postgres', true, 'database_name', 'Database to connect to', 4),
+  (163, 'threshold', 'text', '5 minutes', true, '5 minutes, 1 hour', 'Minimum query duration to flag', 5);
+
+-- pg-version (164)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (164, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (164, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (164, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (164, 'database', 'text', 'postgres', false, 'database_name', 'Database to connect to', 4);
+
+-- pg-list-databases (165)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (165, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (165, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (165, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (165, 'options', 'text', '', false, '--no-psqlrc', 'Additional psql options', 4);
+
+-- pg-list-tables (166)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (166, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (166, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (166, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (166, 'database', 'text', '', true, 'database_name', 'Database to inspect', 4),
+  (166, 'schema', 'text', 'public', false, 'public', 'Schema to list tables from', 5);
+
+-- pg-create-user (167)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (167, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (167, 'username', 'text', 'postgres', true, 'db_user', 'Admin username to connect with', 2),
+  (167, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (167, 'database', 'text', 'postgres', true, 'database_name', 'Database to connect to', 4),
+  (167, 'new_user', 'text', '', true, 'app_user', 'Name of the role/user to create', 5),
+  (167, 'new_password', 'password', '', true, 'strong_password', 'Password for the new role', 6),
+  (167, 'options', 'text', 'LOGIN', false, 'LOGIN, CREATEDB, SUPERUSER', 'Additional role attributes', 7);
+
+-- pg-grant-privileges (168)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (168, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (168, 'username', 'text', 'postgres', true, 'db_user', 'Admin username to connect with', 2),
+  (168, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (168, 'database', 'text', 'postgres', true, 'database_name', 'Database to connect to', 4),
+  (168, 'privileges', 'text', 'ALL PRIVILEGES', true, 'ALL PRIVILEGES, CONNECT, TEMP', 'Privileges to grant', 5),
+  (168, 'target_database', 'text', '', true, 'database_name', 'Database to grant privileges on', 6),
+  (168, 'target_user', 'text', '', true, 'app_user', 'Role/user receiving the privileges', 7);
+
+-- pg-vacuum-analyze (169)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (169, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (169, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (169, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (169, 'database', 'text', '', true, 'database_name', 'Database to vacuum', 4),
+  (169, 'table', 'text', '', false, 'orders', 'Specific table to vacuum (leave empty for whole database)', 5);
+
+-- pg-isready (170)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (170, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (170, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 2),
+  (170, 'username', 'text', 'postgres', false, 'db_user', 'PostgreSQL username', 3),
+  (170, 'options', 'text', '', false, '-t 5 (timeout seconds)', 'Additional pg_isready options', 4);
+
+-- pg-locks (171)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (171, 'host', 'text', 'localhost', true, '192.168.1.1', 'PostgreSQL host', 1),
+  (171, 'username', 'text', 'postgres', true, 'db_user', 'PostgreSQL username', 2),
+  (171, 'port', 'number', '5432', false, '5432', 'PostgreSQL port', 3),
+  (171, 'database', 'text', '', true, 'database_name', 'Database to connect to', 4);
+
+-- mysql-connect (172)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (172, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (172, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (172, 'password', 'password', '', false, 'your_password', 'MySQL password (leave empty for prompt)', 3),
+  (172, 'port', 'number', '3306', false, '3306', 'MySQL port', 4),
+  (172, 'database', 'text', '', false, 'database_name', 'Database to connect to', 5);
+
+-- mysql-db-size (173)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (173, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (173, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (173, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (173, 'port', 'number', '3306', false, '3306', 'MySQL port', 4),
+  (173, 'database', 'text', '', true, 'database_name', 'Database to check the size of', 5);
+
+-- mysql-all-db-sizes (174)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (174, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (174, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (174, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (174, 'port', 'number', '3306', false, '3306', 'MySQL port', 4);
+
+-- mysql-table-sizes (175)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (175, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (175, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (175, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (175, 'port', 'number', '3306', false, '3306', 'MySQL port', 4),
+  (175, 'database', 'text', '', true, 'database_name', 'Database to inspect', 5),
+  (175, 'limit', 'number', '20', false, '20', 'Number of tables to show', 6);
+
+-- mysql-show-processlist (176)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (176, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (176, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (176, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (176, 'port', 'number', '3306', false, '3306', 'MySQL port', 4);
+
+-- mysql-connection-count (177)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (177, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (177, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (177, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (177, 'port', 'number', '3306', false, '3306', 'MySQL port', 4);
+
+-- mysql-kill-process (178)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (178, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (178, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (178, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (178, 'port', 'number', '3306', false, '3306', 'MySQL port', 4),
+  (178, 'process_id', 'number', '', true, '482', 'Process/connection ID to kill', 5);
+
+-- mysql-version (179)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (179, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (179, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (179, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (179, 'port', 'number', '3306', false, '3306', 'MySQL port', 4);
+
+-- mysql-show-databases (180)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (180, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (180, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (180, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (180, 'port', 'number', '3306', false, '3306', 'MySQL port', 4);
+
+-- mysql-show-tables (181)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (181, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (181, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (181, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (181, 'port', 'number', '3306', false, '3306', 'MySQL port', 4),
+  (181, 'database', 'text', '', true, 'database_name', 'Database to inspect', 5);
+
+-- mysql-create-user-grant (182)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (182, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (182, 'username', 'text', 'root', true, 'db_user', 'Admin username to connect with', 2),
+  (182, 'password', 'password', '', false, 'your_password', 'Admin password', 3),
+  (182, 'port', 'number', '3306', false, '3306', 'MySQL port', 4),
+  (182, 'new_user', 'text', '', true, 'app', 'Name of the user to create', 5),
+  (182, 'new_host', 'text', '%', true, '%, localhost, 10.0.%', 'Host pattern the new user connects from', 6),
+  (182, 'new_password', 'password', '', true, 'strong_password', 'Password for the new user', 7),
+  (182, 'privileges', 'text', 'ALL', true, 'ALL, SELECT, SELECT,INSERT,UPDATE', 'Privileges to grant', 8),
+  (182, 'target_database', 'text', '', true, 'database_name', 'Database the privileges apply to', 9);
+
+-- mysql-optimize-table (183)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (183, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (183, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (183, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (183, 'port', 'number', '3306', false, '3306', 'MySQL port', 4),
+  (183, 'database', 'text', '', true, 'database_name', 'Database containing the table', 5),
+  (183, 'table', 'text', '', true, 'orders', 'Table to optimize', 6);
+
+-- mysqladmin-ping (184)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (184, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (184, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (184, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (184, 'port', 'number', '3306', false, '3306', 'MySQL port', 4);
+
+-- mysql-show-status (185)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (185, 'host', 'text', 'localhost', true, '192.168.1.1', 'MySQL host', 1),
+  (185, 'username', 'text', 'root', true, 'db_user', 'MySQL username', 2),
+  (185, 'password', 'password', '', false, 'your_password', 'MySQL password', 3),
+  (185, 'port', 'number', '3306', false, '3306', 'MySQL port', 4),
+  (185, 'pattern', 'text', 'Threads%', true, 'Threads%, Uptime, Queries', 'LIKE pattern to filter status variables', 5);
+
+-- aws-configure (186)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (186, 'options', 'text', '', false, '--profile prod', 'Profile or other aws configure options', 1);
+
+-- aws-whoami (187)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (187, 'options', 'text', '', false, '--profile prod', 'Profile or output options', 1);
+
+-- aws-s3-cp (188)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (188, 'source', 'text', '', true, './backup.sql or s3://bucket/key', 'Source file or S3 path', 1),
+  (188, 'destination', 'text', '', true, 's3://bucket/key or ./local-path', 'Destination file or S3 path', 2),
+  (188, 'options', 'text', '', false, '--recursive, --acl private', 'Additional s3 cp options', 3);
+
+-- aws-s3-sync (189)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (189, 'source', 'text', '', true, './dist or s3://bucket/prefix', 'Source directory or S3 path', 1),
+  (189, 'destination', 'text', '', true, 's3://bucket/prefix or ./local-dir', 'Destination directory or S3 path', 2),
+  (189, 'options', 'text', '', false, '--delete, --exact-timestamps', 'Additional s3 sync options', 3);
+
+-- aws-s3-rm (190)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (190, 'target', 'text', '', true, 's3://bucket/key or s3://bucket/prefix/', 'S3 object or prefix to delete', 1),
+  (190, 'options', 'text', '', false, '--recursive, --dryrun', 'Additional s3 rm options', 2);
+
+-- aws-ec2-start (191)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (191, 'instance_ids', 'text', '', true, 'i-0123456789abcdef0', 'Space-separated EC2 instance IDs', 1),
+  (191, 'options', 'text', '', false, '--profile prod, --region us-east-1', 'Additional options', 2);
+
+-- aws-ec2-stop (192)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (192, 'instance_ids', 'text', '', true, 'i-0123456789abcdef0', 'Space-separated EC2 instance IDs', 1),
+  (192, 'options', 'text', '', false, '--hibernate, --force', 'Additional options', 2);
+
+-- aws-ec2-security-groups (193)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (193, 'options', 'text', '', false, '--group-ids sg-0123456789abcdef0', 'Filter and output options', 1);
+
+-- aws-rds-describe (194)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (194, 'options', 'text', '--query "DBInstances[*].[DBInstanceIdentifier,DBInstanceStatus]" --output table', false, '--db-instance-identifier prod-db', 'Filter and output options', 1);
+
+-- aws-rds-snapshot (195)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (195, 'db_instance_id', 'text', '', true, 'prod-db', 'RDS instance identifier', 1),
+  (195, 'snapshot_id', 'text', '', true, 'prod-db-2024-01-15', 'Name for the new snapshot', 2),
+  (195, 'options', 'text', '', false, '--profile prod', 'Additional options', 3);
+
+-- aws-logs-tail (196)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (196, 'log_group', 'text', '', true, '/aws/lambda/my-function', 'CloudWatch Logs log group name', 1),
+  (196, 'options', 'text', '--follow --since 1h', false, '--follow, --since 1h, --filter "ERROR"', 'Additional logs tail options', 2);
+
+-- aws-cloudwatch-metrics (197)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (197, 'namespace', 'text', 'AWS/EC2', true, 'AWS/EC2, AWS/RDS, AWS/Lambda', 'CloudWatch metric namespace', 1),
+  (197, 'metric_name', 'text', '', true, 'CPUUtilization', 'Metric name', 2),
+  (197, 'start_time', 'text', '', true, '2024-01-15T00:00:00Z', 'Start time (ISO 8601)', 3),
+  (197, 'end_time', 'text', '', true, '2024-01-15T01:00:00Z', 'End time (ISO 8601)', 4),
+  (197, 'period', 'number', '300', true, '300', 'Granularity in seconds', 5),
+  (197, 'statistics', 'text', 'Average', true, 'Average, Sum, Maximum, Minimum', 'Statistic to compute', 6),
+  (197, 'options', 'text', '', false, '--dimensions Name=InstanceId,Value=i-0123456789abcdef0', 'Additional options (e.g. dimensions)', 7);
+
+-- aws-iam-list-users (198)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (198, 'options', 'text', '--query "Users[*].[UserName,CreateDate]" --output table', false, '--path-prefix /app/', 'Filter and output options', 1);
+
+-- aws-lambda-invoke (199)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (199, 'function_name', 'text', '', true, 'my-function', 'Lambda function name or ARN', 1),
+  (199, 'payload', 'text', '{}', false, '{"key":"value"}', 'JSON payload to send', 2),
+  (199, 'output_file', 'text', 'response.json', true, 'response.json', 'File to write the response to', 3),
+  (199, 'options', 'text', '', false, '--cli-binary-format raw-in-base64-out', 'Additional invoke options', 4);
+
+-- aws-ecs-update-service (200)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (200, 'cluster', 'text', '', true, 'prod', 'ECS cluster name', 1),
+  (200, 'service', 'text', '', true, 'api', 'ECS service name', 2),
+  (200, 'options', 'text', '--force-new-deployment', false, '--force-new-deployment, --desired-count 3', 'Additional update-service options', 3);
+
+-- aws-elb-describe (201)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (201, 'target_group_arn', 'text', '', true, 'arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/api/abc123', 'Target group ARN', 1),
+  (201, 'options', 'text', '', false, '--profile prod', 'Additional options', 2);
+
+-- aws-sso-login (202)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (202, 'profile', 'text', '', true, 'prod', 'AWS CLI profile name configured for SSO', 1),
+  (202, 'options', 'text', '', false, '--no-browser', 'Additional sso login options', 2);
+
+-- aws-cloudformation-describe-stacks (203)
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (203, 'options', 'text', '', false, '--stack-name prod-network', 'Filter and output options', 1);

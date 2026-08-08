@@ -1,6 +1,7 @@
-import { CATEGORIES } from '../utils/commands';
+import useCategories from '../hooks/useCategories';
 
 export default function SearchBar({ query, category, onQueryChange, onCategoryChange }) {
+  const { categories } = useCategories();
   return (
     <div className="glass rounded-2xl p-2 shadow-card sm:p-2.5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -45,9 +46,9 @@ export default function SearchBar({ query, category, onQueryChange, onCategoryCh
             }}
           >
             <option value="">All categories</option>
-            {CATEGORIES.map((name) => (
-              <option key={name} value={name}>
-                {name}
+            {categories.map((c) => (
+              <option key={c.id} value={c.name}>
+                {c.name}
               </option>
             ))}
           </select>
