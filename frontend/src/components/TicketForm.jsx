@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CATEGORIES } from '../utils/commands';
+import useCategories from '../hooks/useCategories';
 import featureRequestService from '../services/featureRequestService';
 import { useApp } from '../context/AppContext';
 
@@ -16,6 +16,7 @@ const initialForm = {
 
 export default function TicketForm({ onCreated }) {
   const { showToast } = useApp();
+  const { categories } = useCategories();
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -124,9 +125,9 @@ export default function TicketForm({ onCreated }) {
             className="input-base cursor-pointer"
           >
             <option value="">None</option>
-            {CATEGORIES.map((name) => (
-              <option key={name} value={name}>
-                {name}
+            {categories.map((c) => (
+              <option key={c.id} value={c.name}>
+                {c.name}
               </option>
             ))}
           </select>

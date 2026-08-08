@@ -1,18 +1,3 @@
-export const CATEGORIES = [
-  'MySQL',
-  'PostgreSQL',
-  'MongoDB',
-  'Redis',
-  'Docker',
-  'Kubernetes',
-  'AWS',
-  'GCP',
-  'Azure',
-  'Git',
-  'Linux',
-  'Monitoring',
-];
-
 export function substituteTemplate(template, values) {
   if (!template) return '';
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
