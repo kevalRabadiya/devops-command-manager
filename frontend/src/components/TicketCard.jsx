@@ -83,6 +83,22 @@ export default function TicketCard({ ticket, onVote }) {
           </pre>
         )}
 
+        {Array.isArray(ticket.properties) && ticket.properties.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {ticket.properties.map((prop) => (
+              <span
+                key={prop.property_name}
+                title={prop.description || undefined}
+                className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11px] text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300"
+              >
+                {prop.property_name}
+                {prop.is_required && <span className="text-red-500">*</span>}
+                <span className="text-slate-400"> ({prop.property_type})</span>
+              </span>
+            ))}
+          </div>
+        )}
+
         {ticket.notes && (
           <p className="mb-3 text-xs italic text-slate-500 dark:text-slate-400">{ticket.notes}</p>
         )}

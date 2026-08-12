@@ -47,6 +47,7 @@ async function autoApprove(featureRequest) {
         command_template: template,
         category: categoryName,
         example: template,
+        properties: Array.isArray(featureRequest.properties) ? featureRequest.properties : [],
       });
 
       notes = `Auto-approved (highest priority) and added to commands as "${name}".`;
@@ -101,6 +102,7 @@ async function create(data) {
     category,
     priority = 'medium',
     requested_by = 'anonymous',
+    properties = [],
   } = data;
 
   const featureRequest = await prisma.feature_requests.create({
@@ -111,6 +113,7 @@ async function create(data) {
       category,
       priority,
       requested_by,
+      properties,
     },
   });
 
@@ -130,6 +133,7 @@ async function update(id, data) {
     'priority',
     'status',
     'notes',
+    'properties',
   ];
 
   const payload = {};

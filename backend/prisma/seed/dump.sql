@@ -3630,3 +3630,23 @@ VALUES
 INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
 VALUES
   (203, 'options', 'text', '', false, '--stack-name prod-network', 'Filter and output options', 1);
+
+-- psql-execute-file (204)
+INSERT INTO commands (name, description, command_template, category, tags, example, syntax_help)
+VALUES (
+  'psql-execute-file',
+  'Run a .sql script file against a PostgreSQL database via psql (e.g. to restore a plain-text dump or apply a migration/seed file)',
+  'psql -h {{host}} -p {{port}} -U {{user}} -d {{db_name}} -f {{file_path}}',
+  'PostgreSQL',
+  ARRAY['restore', 'import', 'execute', 'script', 'psql', 'postgresql'],
+  'psql -h altaria.proxy.rlwy.net -p 16019 -U postgres -d railway -f ~/Downloads/backup.sql',
+  'Runs every statement in the file non-interactively, in order. For a plain-text pg_dump (no -F c), this is the restore command - use pg_restore instead for custom/directory/tar format dumps. You will be prompted for the password unless PGPASSWORD is set or a ~/.pgpass entry exists.'
+);
+
+INSERT INTO command_properties (command_id, property_name, property_type, default_value, is_required, placeholder, description, display_order)
+VALUES
+  (204, 'host', 'text', '', true, 'altaria.proxy.rlwy.net', 'PostgreSQL server hostname or IP', 1),
+  (204, 'port', 'number', '5432', true, '16019', 'PostgreSQL server port', 2),
+  (204, 'user', 'text', 'postgres', true, 'postgres', 'PostgreSQL username', 3),
+  (204, 'db_name', 'text', '', true, 'railway', 'Target database name', 4),
+  (204, 'file_path', 'text', '', true, '~/Downloads/backup.sql', 'Path to the .sql file to execute', 5);
