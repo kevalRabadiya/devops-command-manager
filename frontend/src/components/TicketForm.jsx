@@ -3,7 +3,7 @@ import useCategories from '../hooks/useCategories';
 import featureRequestService from '../services/featureRequestService';
 import { useApp } from '../context/AppContext';
 
-const PRIORITIES = ['low', 'medium', 'high'];
+const PRIORITIES = ['low', 'medium', 'high', 'highest'];
 
 const initialForm = {
   title: '',
@@ -149,6 +149,11 @@ export default function TicketForm({ onCreated }) {
               </option>
             ))}
           </select>
+          {form.priority === 'highest' && (
+            <p className="mt-1.5 text-xs font-medium text-rose-600 dark:text-rose-300">
+              Highest priority requests are auto-approved and added to the commands list.
+            </p>
+          )}
         </div>
 
         <div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 const STATUS_STYLES = {
   pending: 'bg-amber-500/15 text-amber-700 ring-amber-500/30 dark:text-amber-300 dark:ring-amber-400/30',
+  approved: 'bg-emerald-500/15 text-emerald-700 ring-emerald-500/30 dark:text-emerald-300 dark:ring-emerald-400/30',
   planned: 'bg-sky-500/15 text-sky-700 ring-sky-500/30 dark:text-sky-300 dark:ring-sky-400/30',
   in_progress: 'bg-indigo-500/15 text-indigo-700 ring-indigo-500/30 dark:text-indigo-300 dark:ring-indigo-400/30',
   completed: 'bg-emerald-500/15 text-emerald-700 ring-emerald-500/30 dark:text-emerald-300 dark:ring-emerald-400/30',
@@ -12,6 +13,7 @@ const PRIORITY_STYLES = {
   low: 'text-slate-500 dark:text-slate-400',
   medium: 'text-amber-600 dark:text-amber-300',
   high: 'text-rose-600 dark:text-rose-300',
+  highest: 'text-rose-700 dark:text-rose-200',
 };
 
 function VoteButton({ direction, count, onVote, disabled }) {
@@ -79,6 +81,10 @@ export default function TicketCard({ ticket, onVote }) {
           <pre className="mb-3 overflow-x-auto rounded-lg bg-ink-950/90 p-3 font-mono text-xs text-emerald-300">
             {ticket.command_example}
           </pre>
+        )}
+
+        {ticket.notes && (
+          <p className="mb-3 text-xs italic text-slate-500 dark:text-slate-400">{ticket.notes}</p>
         )}
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">

@@ -5,7 +5,7 @@ import Pagination from '../components/Pagination';
 import useFeatureRequests from '../hooks/useFeatureRequests';
 import { useApp } from '../context/AppContext';
 
-const STATUSES = ['pending', 'planned', 'in_progress', 'completed', 'rejected'];
+const STATUSES = ['pending', 'approved', 'planned', 'in_progress', 'completed', 'rejected'];
 
 export default function FeatureRequestsPage() {
   const { showToast } = useApp();
