@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const { propertySchema } = require('./commandSchemas');
 
 const PRIORITIES = ['low', 'medium', 'high', 'highest'];
 const STATUSES = ['pending', 'approved', 'planned', 'in_progress', 'completed', 'rejected'];
@@ -12,6 +13,7 @@ const createFeatureRequestSchema = Joi.object({
     .valid(...PRIORITIES)
     .default('medium'),
   requested_by: Joi.string().max(100).default('anonymous'),
+  properties: Joi.array().items(propertySchema).default([]),
 });
 
 const updateFeatureRequestSchema = Joi.object({
@@ -22,6 +24,7 @@ const updateFeatureRequestSchema = Joi.object({
   priority: Joi.string().valid(...PRIORITIES),
   status: Joi.string().valid(...STATUSES),
   notes: Joi.string().allow('', null),
+  properties: Joi.array().items(propertySchema),
 }).min(1);
 
 const listQuerySchema = Joi.object({

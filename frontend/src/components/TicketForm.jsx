@@ -2,6 +2,9 @@ import { useState } from 'react';
 import useCategories from '../hooks/useCategories';
 import featureRequestService from '../services/featureRequestService';
 import { useApp } from '../context/AppContext';
+import PropertyDefinitionEditor, {
+  serializeProperties,
+} from './PropertyDefinitionEditor';
 
 const PRIORITIES = ['low', 'medium', 'high', 'highest'];
 
@@ -18,6 +21,7 @@ export default function TicketForm({ onCreated }) {
   const { showToast } = useApp();
   const { categories } = useCategories();
   const [form, setForm] = useState(initialForm);
+  const [propertyRows, setPropertyRows] = useState([]);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,10 +51,12 @@ export default function TicketForm({ onCreated }) {
         category: form.category || undefined,
         priority: form.priority,
         requested_by: form.requested_by.trim() || undefined,
+        properties: serializeProperties(propertyRows),
       };
       const created = await featureRequestService.create(payload);
       onCreated?.(created);
       setForm(initialForm);
+      setPropertyRows([]);
       setErrors({});
       showToast('Feature request submitted!', 'success');
     } catch (err) {
@@ -112,6 +118,8 @@ export default function TicketForm({ onCreated }) {
           className={`${inputClass('command_example')} font-mono`}
         />
       </div>
+
+      <PropertyDefinitionEditor rows={propertyRows} onChange={setPropertyRows} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div>

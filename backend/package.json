@@ -2,6 +2,8 @@
   "name": "command-manager-backend",
   "version": "1.0.0",
   "description": "DevOps Command Manager API",
+  "author": "Keval Rabadiya",
+  "license": "MIT",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
