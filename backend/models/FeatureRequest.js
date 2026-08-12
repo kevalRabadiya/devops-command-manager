@@ -1,4 +1,71 @@
 const prisma = require('../lib/prisma');
+const Command = require('./Command');
+
+const AUTO_APPROVE_PRIORITY = 'highest';
+const DEFAULT_CATEGORY = 'General';
+
+async function resolveCategoryName(categoryName) {
+  const name = (categoryName || '').trim() || DEFAULT_CATEGORY;
+  const existing = await prisma.categories.findUnique({ where: { name } });
+  if (existing) return existing.name;
+
+  const created = await prisma.categories.create({ data: { name } });
+  return created.name;
+}
+
+async function uniqueCommandName(baseName) {
+  const base = baseName.trim().slice(0, 255) || 'Untitled command';
+  let name = base;
+  let suffix = 1;
+
+  // eslint-disable-next-line no-await-in-loop
+  while (await prisma.commands.findUnique({ where: { name } })) {
+    suffix += 1;
+    name = `${base} (${suffix})`.slice(0, 255);
+  }
+
+  return name;
+}
+
+// Highest-priority requests skip manual review: they're approved immediately
+// and, when they include an example command, added straight to the commands list.
+async function autoApprove(featureRequest) {
+  let notes;
+
+  try {
+    if (!featureRequest.command_example || !featureRequest.command_example.trim()) {
+      notes =
+        'Auto-approved (highest priority). Add an example command to this request to auto-generate the command entry.';
+    } else {
+      const categoryName = await resolveCategoryName(featureRequest.category);
+      const name = await uniqueCommandName(featureRequest.title);
+      const template = featureRequest.command_example.trim();
+
+      await Command.create({
+        name,
+        description: featureRequest.description,
+        command_template: template,
+        category: categoryName,
+        example: template,
+      });
+
+      notes = `Auto-approved (highest priority) and added to commands as "${name}".`;
+    }
+
+    return prisma.feature_requests.update({
+      where: { id: featureRequest.id },
+      data: { status: 'approved', notes },
+    });
+  } catch (err) {
+    return prisma.feature_requests.update({
+      where: { id: featureRequest.id },
+      data: {
+        status: 'approved',
+        notes: `Auto-approved (highest priority), but automatic command creation failed: ${err.message}`,
+      },
+    });
+  }
+}
 
 async function getAll({ page = 1, limit = 20, status, category } = {}) {
   const where = {};
@@ -36,7 +103,7 @@ async function create(data) {
     requested_by = 'anonymous',
   } = data;
 
-  return prisma.feature_requests.create({
+  const featureRequest = await prisma.feature_requests.create({
     data: {
       title,
       description,
@@ -46,6 +113,12 @@ async function create(data) {
       requested_by,
     },
   });
+
+  if (priority === AUTO_APPROVE_PRIORITY) {
+    return autoApprove(featureRequest);
+  }
+
+  return featureRequest;
 }
 
 async function update(id, data) {

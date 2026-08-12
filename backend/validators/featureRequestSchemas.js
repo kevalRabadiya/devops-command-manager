@@ -1,7 +1,7 @@
 const Joi = require('joi');
 
-const PRIORITIES = ['low', 'medium', 'high'];
-const STATUSES = ['pending', 'planned', 'in_progress', 'completed', 'rejected'];
+const PRIORITIES = ['low', 'medium', 'high', 'highest'];
+const STATUSES = ['pending', 'approved', 'planned', 'in_progress', 'completed', 'rejected'];
 
 const createFeatureRequestSchema = Joi.object({
   title: Joi.string().max(255).required(),
